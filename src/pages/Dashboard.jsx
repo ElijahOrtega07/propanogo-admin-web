@@ -2,11 +2,9 @@ import React, { useEffect, useState } from "react";
 import {
   Box, Typography, Grid, Paper
 } from "@mui/material";
-
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
-
 import { collection, getDocs } from "firebase/firestore";
 import { firestore } from "../firebase/firebaseConfig";
 
@@ -23,35 +21,65 @@ export default function Dashboard() {
   }, []);
 
   const fetchDashboardData = async () => {
-    const pedidosCol = collection(firestore, "pedidos");
-    const snapshot = await getDocs(pedidosCol);
-    const pedidos = snapshot.docs.map(doc => doc.data());
+    try {
+      // 1) Obtener todos los pedidos
+      const pedidosCol = collection(firestore, "pedidos");
+      const pedidosSnap = await getDocs(pedidosCol);
+      const pedidos = pedidosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    const total = pedidos.length;
-    const totalGalones = pedidos.reduce((sum, p) => sum + (p.galones || 0), 0);
-    const enProcesoCount = pedidos.filter(p => p.estado === "En proceso").length;
+      const total = pedidos.length;
+      const enProcesoCount = pedidos.filter(p => p.estado === "En proceso").length;
 
-    setTotalPedidos(total);
-    setGalones(totalGalones);
-    setEnProceso(enProcesoCount);
-    setRepartidores(3); // simulado
+      // 2) Obtener detalles de pedidos
+      const detallesCol = collection(firestore, "detalle_pedido");
+      const detallesSnap = await getDocs(detallesCol);
+      const detalles = detallesSnap.docs.map(doc => doc.data());
 
-    // Simulación gráfica
-    setVentasSemana([
-      { dia: "Lun", ventas: 120 },
-      { dia: "Mar", ventas: 180 },
-      { dia: "Mie", ventas: 130 },
-      { dia: "Jue", ventas: 160 },
-      { dia: "Vie", ventas: 300 },
-      { dia: "Sab", ventas: 200 },
-      { dia: "Dom", ventas: 170 },
-    ]);
+      // 3) Sumar galones totales (usando campo galones en detalle_pedido)
+      const totalGalones = detalles.reduce(
+        (sum, d) => sum + (typeof d.galones === "number" ? d.galones : 0),
+        0
+      );
 
-    // Alerta de inventario bajo
-    if (totalGalones < 500) {
-      setAlertaInventario(true);
-    } else {
-      setAlertaInventario(false);
+      // 4) Ventas por día (sumar galones por día de la semana)
+      const dias = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
+      const ventas = Array(7).fill(0);
+
+      pedidos.forEach(pedido => {
+        // Filtrar detalles que pertenecen al pedido
+        const galonesPedido = detalles
+          .filter(d => d.id_pedido === pedido.id)
+          .reduce((sum, d) => sum + (typeof d.galones === "number" ? d.galones : 0), 0);
+
+        if (pedido.fecha_pedido) {
+          // Firestore Timestamp a Date
+          const fecha = pedido.fecha_pedido.toDate ? pedido.fecha_pedido.toDate() : new Date(pedido.fecha_pedido);
+          const dia = fecha.getDay(); // 0 = Domingo
+          ventas[dia] += galonesPedido;
+        }
+      });
+
+      const ventasData = dias.map((dia, i) => ({ dia, ventas: ventas[i] }));
+
+      
+      // 5) Contar repartidores activos (rol === "repartidor")
+      const usuariosCol = collection(firestore, "usuario"); // <-- CORREGIDO
+      const usuariosSnap = await getDocs(usuariosCol);
+      const usuarios = usuariosSnap.docs.map(doc => doc.data());
+      const repartidoresCount = usuarios.filter(u => u.rol === "repartidor").length;
+      // ...
+
+
+      // Actualizar estados
+      setTotalPedidos(total);
+      setGalones(totalGalones);
+      setEnProceso(enProcesoCount);
+      setRepartidores(repartidoresCount);
+      setVentasSemana(ventasData);
+      setAlertaInventario(totalGalones < 500);
+
+    } catch (error) {
+      console.error("Error al cargar datos del dashboard:", error);
     }
   };
 
@@ -69,7 +97,6 @@ export default function Dashboard() {
         Inicio
       </Typography>
 
-      {/* ALERTA */}
       {alertaInventario && (
         <Box mb={2}>
           <Paper sx={{ p: 2, backgroundColor: "#fff8e1" }}>
@@ -80,7 +107,6 @@ export default function Dashboard() {
         </Box>
       )}
 
-      {/* TARJETAS */}
       <Grid container spacing={2} mb={2}>
         <Grid item xs={12} sm={4} md={3}>
           <Paper sx={cardStyle}>
@@ -108,7 +134,6 @@ export default function Dashboard() {
         </Grid>
       </Grid>
 
-      {/* GRÁFICO */}
       <Box sx={{ backgroundColor: "#fff", borderRadius: 2, p: 2, boxShadow: "0px 2px 5px rgba(0,0,0,0.1)" }}>
         <Typography variant="h6" gutterBottom>
           Ventas de la semana

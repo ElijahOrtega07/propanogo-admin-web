@@ -1,43 +1,94 @@
 import React, { useEffect, useState } from "react";
 import {
   Box, Typography, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Paper, Tabs, Tab, Button
+  TableHead, TableRow, Paper, Tabs, Tab, Button, Select, MenuItem, FormControl, InputLabel
 } from "@mui/material";
-import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import {
+  collection, onSnapshot, doc, updateDoc, getDocs, deleteDoc
+} from "firebase/firestore";
 import { firestore } from "../firebase/firebaseConfig";
 
 export default function Pedidos() {
   const [pedidos, setPedidos] = useState([]);
   const [estadoFiltro, setEstadoFiltro] = useState("Pendiente");
+  const [usuarios, setUsuarios] = useState([]); // Para buscar nombre cliente y repartidores
+  const [repartidores, setRepartidores] = useState([]);
+  const [asignaciones, setAsignaciones] = useState({}); // pedidoId -> repartidorId
 
+  // Escuchar pedidos en tiempo real
   useEffect(() => {
-    obtenerPedidos();
+    const pedidosQuery = collection(firestore, "pedidos");
+    const unsubscribe = onSnapshot(pedidosQuery, (snapshot) => {
+      const pedidosData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setPedidos(pedidosData);
+    });
+    return () => unsubscribe();
   }, []);
 
-  const obtenerPedidos = async () => {
-    const snapshot = await getDocs(collection(firestore, "pedidos"));
-    const lista = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    setPedidos(lista);
-  };
+  // Cargar usuarios (clientes y repartidores)
+  useEffect(() => {
+    async function cargarUsuarios() {
+      const usuariosCol = collection(firestore, "usuario"); // colección correcta sin 's'
+      const snapshot = await getDocs(usuariosCol);
+      const listaUsuarios = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setUsuarios(listaUsuarios);
+      setRepartidores(listaUsuarios.filter(u => u.rol === "repartidor"));
+    }
+    cargarUsuarios();
+  }, []);
 
   const eliminarPedido = async (id) => {
+    if (!window.confirm("¿Eliminar este pedido?")) return;
     await deleteDoc(doc(firestore, "pedidos", id));
-    obtenerPedidos(); // recarga la tabla
   };
-
-  const estados = ["Pendiente", "En camino", "Entregado"];
 
   const colorEstado = (estado) => {
     switch (estado) {
       case "Pendiente":
-        return "#fbc02d"; // amarillo
+        return "#fbc02d";
       case "En camino":
-        return "#42a5f5"; // azul
+        return "#42a5f5";
       case "Entregado":
-        return "#66bb6a"; // verde
+        return "#66bb6a";
+      case "Asignado":
+        return "#1976d2"; // azul oscuro para asignado
       default:
         return "#ccc";
     }
+  };
+
+  // Manejar cambio en asignación seleccionada
+  const handleAsignacionChange = (pedidoId, repartidorId) => {
+    setAsignaciones(prev => ({ ...prev, [pedidoId]: repartidorId }));
+  };
+
+  // Guardar asignación en Firestore
+  const asignarRepartidor = async (pedidoId) => {
+    const repartidorId = asignaciones[pedidoId];
+    if (!repartidorId) {
+      alert("Selecciona un repartidor antes de asignar");
+      return;
+    }
+    try {
+      const pedidoRef = doc(firestore, "pedidos", pedidoId);
+      await updateDoc(pedidoRef, {
+        id_repartidor: repartidorId,
+        // No cambiamos el estado aquí
+      });
+      alert("Repartidor asignado correctamente");
+      setAsignaciones(prev => ({ ...prev, [pedidoId]: "" }));
+    } catch (error) {
+      alert("Error al asignar repartidor: " + error.message);
+    }
+  };
+
+  // Obtener nombre cliente por id_usuario
+  const nombreCliente = (id_usuario) => {
+    const usuario = usuarios.find(u => u.id === id_usuario);
+    return usuario?.nombre || usuario?.email || id_usuario || "Desconocido";
   };
 
   const pedidosFiltrados = pedidos.filter(p => p.estado === estadoFiltro);
@@ -48,7 +99,6 @@ export default function Pedidos() {
         Gestión de Pedidos
       </Typography>
 
-      {/* Tabs de estado */}
       <Tabs
         value={estadoFiltro}
         onChange={(e, newValue) => setEstadoFiltro(newValue)}
@@ -56,28 +106,31 @@ export default function Pedidos() {
         indicatorColor="primary"
         sx={{ mb: 2 }}
       >
-        {estados.map(est => (
+        {["Pendiente", "En camino", "Entregado"].map(est => (
           <Tab key={est} label={est} value={est} />
         ))}
       </Tabs>
 
-      {/* Tabla */}
       <TableContainer component={Paper}>
         <Table>
+
           <TableHead sx={{ backgroundColor: "#f0f0f0" }}>
             <TableRow>
               <TableCell>Cliente</TableCell>
               <TableCell>Dirección</TableCell>
               <TableCell>Estado</TableCell>
               <TableCell>Fecha</TableCell>
+              <TableCell>Repartidor</TableCell> 
               <TableCell>Acción</TableCell>
+              <TableCell>Asignar Repartidor</TableCell>
             </TableRow>
           </TableHead>
+
           <TableBody>
             {pedidosFiltrados.map((pedido) => (
               <TableRow key={pedido.id}>
-                <TableCell>{pedido.cliente}</TableCell>
-                <TableCell>{pedido.direccion || "––"}</TableCell>
+                <TableCell>{nombreCliente(pedido.id_usuario)}</TableCell>
+                <TableCell>{pedido.direccion_entrega || "––"}</TableCell>
                 <TableCell>
                   <span
                     style={{
@@ -91,7 +144,12 @@ export default function Pedidos() {
                     {pedido.estado}
                   </span>
                 </TableCell>
-                <TableCell>{pedido.fecha || "––"}</TableCell>
+                <TableCell>{pedido.fecha_pedido?.toDate?.().toLocaleString() || "––"}</TableCell>
+                <TableCell>
+                  {pedido.id_repartidor
+                    ? repartidores.find(r => r.id === pedido.id_repartidor)?.nombre || "Desconocido"
+                    : "–"}
+                </TableCell>
                 <TableCell>
                   <Button
                     color="error"
@@ -100,11 +158,40 @@ export default function Pedidos() {
                     Eliminar
                   </Button>
                 </TableCell>
+                <TableCell>
+                  {/* Mostrar solo para pedidos Pendiente */}
+                  {pedido.estado === "Pendiente" && (
+                    <>
+                      <FormControl fullWidth size="small" sx={{ mb: 1 }}>
+                        <InputLabel>Repartidor</InputLabel>
+                        <Select
+                          value={asignaciones[pedido.id] || pedido.id_repartidor || ""}
+                          label="Repartidor"
+                          onChange={(e) => handleAsignacionChange(pedido.id, e.target.value)}
+                        >
+                          <MenuItem value="">-- Ninguno --</MenuItem>
+                          {repartidores.map(r => (
+                            <MenuItem key={r.id} value={r.id}>
+                              {r.nombre || r.email || r.id}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        onClick={() => asignarRepartidor(pedido.id)}
+                      >
+                        Asignar
+                      </Button>
+                    </>
+                  )}
+                </TableCell>
               </TableRow>
             ))}
             {pedidosFiltrados.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={7} align="center">
                   No hay pedidos con estado "{estadoFiltro}"
                 </TableCell>
               </TableRow>
