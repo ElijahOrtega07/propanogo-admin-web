@@ -1,5 +1,5 @@
 // Archivo: src/pages/Reportes.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -22,33 +22,53 @@ import {
   Legend
 } from "recharts";
 import * as XLSX from "xlsx";
-
-// Datos simulados
-const ventasData = [
-  { nombre: "Lun", ventas: 20 },
-  { nombre: "Mar", ventas: 30 },
-  { nombre: "Mié", ventas: 25 },
-  { nombre: "Jue", ventas: 40 },
-  { nombre: "Vie", ventas: 35 },
-  { nombre: "Sáb", ventas: 50 },
-  { nombre: "Dom", ventas: 45 }
-];
-
-const repartidoresData = [
-  { nombre: "Juan", entregas: 12 },
-  { nombre: "Ana", entregas: 15 },
-  { nombre: "Carlos", entregas: 10 },
-  { nombre: "Laura", entregas: 18 }
-];
-
-const productosData = [
-  { nombre: "Producto A", ventas: 40 },
-  { nombre: "Producto B", ventas: 28 },
-  { nombre: "Producto C", ventas: 22 }
-];
+import { collection, getDocs } from "firebase/firestore";
+import { firestore } from "../firebase/firebaseConfig";
 
 export default function Reportes() {
   const [periodo, setPeriodo] = useState("Dia");
+  const [ventasData, setVentasData] = useState([]);
+  const [repartidoresData, setRepartidoresData] = useState([]);
+  const [productosData, setProductosData] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const pedidosSnapshot = await getDocs(collection(firestore, "pedidos"));
+      const pedidos = pedidosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      // Ventas por día
+      const ventasPorDia = {};
+      pedidos.forEach(p => {
+        const fecha = new Date(p.fecha);
+        const dia = fecha.toLocaleDateString("es-ES", { weekday: "short" });
+        ventasPorDia[dia] = (ventasPorDia[dia] || 0) + 1;
+      });
+      const ventas = Object.entries(ventasPorDia).map(([nombre, ventas]) => ({ nombre, ventas }));
+      setVentasData(ventas);
+
+      // Entregas por repartidor
+      const entregasPorRepartidor = {};
+      pedidos.forEach(p => {
+        if (p.repartidor) {
+          entregasPorRepartidor[p.repartidor] = (entregasPorRepartidor[p.repartidor] || 0) + 1;
+        }
+      });
+      const repartidores = Object.entries(entregasPorRepartidor).map(([nombre, entregas]) => ({ nombre, entregas }));
+      setRepartidoresData(repartidores);
+
+      // Productos más vendidos (asumiendo p.producto: nombre)
+      const productosContador = {};
+      pedidos.forEach(p => {
+        if (p.producto) {
+          productosContador[p.producto] = (productosContador[p.producto] || 0) + 1;
+        }
+      });
+      const productos = Object.entries(productosContador).map(([nombre, ventas]) => ({ nombre, ventas }));
+      setProductosData(productos);
+    };
+
+    fetchData();
+  }, []);
 
   const exportarExcel = () => {
     const wb = XLSX.utils.book_new();

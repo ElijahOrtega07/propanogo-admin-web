@@ -9,16 +9,25 @@ import {
   TableBody,
   TableContainer,
   Paper,
-  Button
+  Button,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from "@mui/material";
-import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { firestore } from "../firebase/firebaseConfig";
+import { useNavigate } from "react-router-dom";
 
 export default function Repartidores() {
   const [repartidores, setRepartidores] = useState([]);
+  const [filtro, setFiltro] = useState({ nombre: "", estado: "Todos" });
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(firestore, "repartidores"), (snapshot) => {
+    const q = query(collection(firestore, "usuario"), where("rol", "==", "repartidor"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const lista = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setRepartidores(lista);
     });
@@ -27,12 +36,21 @@ export default function Repartidores() {
 
   const toggleEstado = async (id, estadoActual) => {
     const nuevoEstado = estadoActual === "Activo" ? "Inactivo" : "Activo";
-    await updateDoc(doc(firestore, "repartidores", id), { estado: nuevoEstado });
+    await updateDoc(doc(firestore, "usuario", id), { estado: nuevoEstado });
   };
 
-  const verHistorial = (nombre) => {
-    console.log(`Ver historial de ${nombre}`);
-    // Aquí puedes mostrar un modal en el futuro
+  const handleFiltro = (e) => {
+    setFiltro({ ...filtro, [e.target.name]: e.target.value });
+  };
+
+  const repartidoresFiltrados = repartidores.filter(r =>
+    r.nombre.toLowerCase().includes(filtro.nombre.toLowerCase()) &&
+    (filtro.estado === "Todos" || r.estado === filtro.estado)
+  );
+
+  const verHistorial = (repartidorNombre) => {
+    // Redirige a /historial con un parámetro de búsqueda
+    navigate(`/historial?repartidor=${encodeURIComponent(repartidorNombre)}`);
   };
 
   return (
@@ -41,6 +59,32 @@ export default function Repartidores() {
         Gestión de Repartidores
       </Typography>
 
+      {/* Filtros */}
+      <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+        <TextField
+          label="Buscar por nombre"
+          name="nombre"
+          variant="outlined"
+          size="small"
+          value={filtro.nombre}
+          onChange={handleFiltro}
+        />
+        <FormControl size="small" sx={{ minWidth: 150 }}>
+          <InputLabel>Estado</InputLabel>
+          <Select
+            name="estado"
+            value={filtro.estado}
+            label="Estado"
+            onChange={handleFiltro}
+          >
+            <MenuItem value="Todos">Todos</MenuItem>
+            <MenuItem value="Activo">Activo</MenuItem>
+            <MenuItem value="Inactivo">Inactivo</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+
+      {/* Tabla */}
       <TableContainer component={Paper}>
         <Table>
           <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
@@ -53,11 +97,11 @@ export default function Repartidores() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {repartidores.map(rep => (
+            {repartidoresFiltrados.map(rep => (
               <TableRow key={rep.id}>
                 <TableCell>{rep.nombre}</TableCell>
-                <TableCell>{rep.telefono}</TableCell>
-                <TableCell>{rep.zona}</TableCell>
+                <TableCell>{rep.telefono || "––"}</TableCell>
+                <TableCell>{rep.zona || "––"}</TableCell>
                 <TableCell>
                   <Button
                     onClick={() => toggleEstado(rep.id, rep.estado)}
@@ -73,6 +117,13 @@ export default function Repartidores() {
                 </TableCell>
               </TableRow>
             ))}
+            {repartidoresFiltrados.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} align="center">
+                  No hay repartidores registrados
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </TableContainer>
