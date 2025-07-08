@@ -1,25 +1,10 @@
 // Archivo: src/pages/Reportes.jsx
 import React, { useState, useEffect } from "react";
 import {
-  Box,
-  Typography,
-  Paper,
-  Button,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel
+  Box, Typography, Paper, Button, MenuItem, Select, FormControl, InputLabel
 } from "@mui/material";
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  BarChart,
-  Bar,
-  Legend
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend
 } from "recharts";
 import * as XLSX from "xlsx";
 import { collection, getDocs } from "firebase/firestore";
@@ -33,42 +18,86 @@ export default function Reportes() {
 
   useEffect(() => {
     const fetchData = async () => {
+      // Obtener pedidos
       const pedidosSnapshot = await getDocs(collection(firestore, "pedidos"));
       const pedidos = pedidosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      // Ventas por día
-      const ventasPorDia = {};
-      pedidos.forEach(p => {
-        const fecha = new Date(p.fecha);
-        const dia = fecha.toLocaleDateString("es-ES", { weekday: "short" });
-        ventasPorDia[dia] = (ventasPorDia[dia] || 0) + 1;
+      // Obtener usuarios (repartidores)
+      const usuariosSnapshot = await getDocs(collection(firestore, "usuario"));
+      const usuarios = usuariosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const mapaRepartidores = {};
+      usuarios.forEach(u => {
+        if (u.rol === "repartidor") {
+          mapaRepartidores[u.uid] = u.nombre;
+        }
       });
-      const ventas = Object.entries(ventasPorDia).map(([nombre, ventas]) => ({ nombre, ventas }));
+
+      // Obtener detalle_pedido y productos
+      const detalleSnapshot = await getDocs(collection(firestore, "detalle_pedido"));
+      const detalles = detalleSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      const productosSnapshot = await getDocs(collection(firestore, "producto"));
+      const productosDocs = productosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const mapaProductos = {};
+      productosDocs.forEach(p => {
+        mapaProductos[p.id] = p.producto;
+      });
+
+      // Ventas por periodo usando fecha_entrega o fecha_pedido
+      const ventasPorPeriodo = {};
+      pedidos.forEach(p => {
+        if (p.estado !== "Entregado") return; // solo entregados
+
+        let fechaBase = null;
+        if (p.fecha_entrega && typeof p.fecha_entrega.toDate === "function") {
+          fechaBase = p.fecha_entrega.toDate();
+        } else if (p.fecha_entrega) {
+          fechaBase = new Date(p.fecha_entrega);
+        } else if (p.fecha_pedido) {
+          fechaBase = new Date(p.fecha_pedido);
+        }
+
+        if (!fechaBase || isNaN(fechaBase.getTime())) return;
+
+        let clave = "";
+        if (periodo === "Dia") {
+          clave = fechaBase.toLocaleDateString("es-ES", { weekday: "short" });
+        } else if (periodo === "Semana") {
+          const año = fechaBase.getFullYear();
+          const semana = Math.ceil(fechaBase.getDate() / 7);
+          clave = `Sem ${semana} - ${año}`;
+        } else if (periodo === "Mes") {
+          clave = fechaBase.toLocaleDateString("es-ES", { month: "short", year: "numeric" });
+        }
+
+        ventasPorPeriodo[clave] = (ventasPorPeriodo[clave] || 0) + 1;
+      });
+      const ventas = Object.entries(ventasPorPeriodo).map(([nombre, ventas]) => ({ nombre, ventas }));
       setVentasData(ventas);
 
-      // Entregas por repartidor
+      // Entregas por repartidor con nombre real
       const entregasPorRepartidor = {};
       pedidos.forEach(p => {
-        if (p.repartidor) {
-          entregasPorRepartidor[p.repartidor] = (entregasPorRepartidor[p.repartidor] || 0) + 1;
+        if (p.estado === "Entregado" && p.id_repartidor) {
+          const nombre = mapaRepartidores[p.id_repartidor] || "Sin nombre";
+          entregasPorRepartidor[nombre] = (entregasPorRepartidor[nombre] || 0) + 1;
         }
       });
       const repartidores = Object.entries(entregasPorRepartidor).map(([nombre, entregas]) => ({ nombre, entregas }));
       setRepartidoresData(repartidores);
 
-      // Productos más vendidos (asumiendo p.producto: nombre)
+      // Productos más vendidos usando cantidad desde detalle_pedido
       const productosContador = {};
-      pedidos.forEach(p => {
-        if (p.producto) {
-          productosContador[p.producto] = (productosContador[p.producto] || 0) + 1;
-        }
+      detalles.forEach(d => {
+        const nombre = mapaProductos[d.id_producto] || "Desconocido";
+        productosContador[nombre] = (productosContador[nombre] || 0) + (d.cantidad || 0);
       });
       const productos = Object.entries(productosContador).map(([nombre, ventas]) => ({ nombre, ventas }));
       setProductosData(productos);
     };
 
     fetchData();
-  }, []);
+  }, [periodo]);
 
   const exportarExcel = () => {
     const wb = XLSX.utils.book_new();
@@ -138,9 +167,11 @@ export default function Reportes() {
         </BarChart>
       </Paper>
 
-      <Button variant="contained" color="success" onClick={exportarExcel}>
-        Exportar a Excel
-      </Button>
+      <Box sx={{ mt: 4, display: "flex", justifyContent: "center" }}>
+        <Button variant="contained" color="success" onClick={exportarExcel}>
+          Exportar a Excel
+        </Button>
+      </Box>
     </Box>
   );
 }
