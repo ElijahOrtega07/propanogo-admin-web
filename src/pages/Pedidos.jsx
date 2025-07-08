@@ -118,6 +118,7 @@ export default function Pedidos() {
             <TableRow>
               <TableCell>Cliente</TableCell>
               <TableCell>Dirección</TableCell>
+              <TableCell>Zona</TableCell>
               <TableCell>Estado</TableCell>
               <TableCell>Fecha</TableCell>
               <TableCell>Repartidor</TableCell> 
@@ -131,6 +132,7 @@ export default function Pedidos() {
               <TableRow key={pedido.id}>
                 <TableCell>{nombreCliente(pedido.id_usuario)}</TableCell>
                 <TableCell>{pedido.direccion_entrega || "––"}</TableCell>
+                <TableCell>{pedido.zonaReparto || "No asignada"}</TableCell>
                 <TableCell>
                   <span
                     style={{
@@ -170,10 +172,12 @@ export default function Pedidos() {
                           onChange={(e) => handleAsignacionChange(pedido.id, e.target.value)}
                         >
                           <MenuItem value="">-- Ninguno --</MenuItem>
-                          {repartidores.map(r => (
-                            <MenuItem key={r.id} value={r.id}>
-                              {r.nombre || r.email || r.id}
-                            </MenuItem>
+                          {repartidores
+                            .filter(r => r.zona === pedido.zonaReparto) // ✅ solo repartidores con zona igual
+                            .map(r => (
+                              <MenuItem key={r.id} value={r.id}>
+                                {r.nombre || r.email || r.id}
+                              </MenuItem>
                           ))}
                         </Select>
                       </FormControl>
