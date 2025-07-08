@@ -58,7 +58,16 @@ export default function HistorialEntregas() {
           pedidosEntregados.push({
             ...pedido,
             clienteNombre: nombreCliente,
-            repartidorNombre: nombreRepartidor
+            repartidorNombre: nombreRepartidor,
+            direccion_entrega: pedido.direccion_entrega,
+            fecha_pedido: pedido.fecha_pedido?.toDate().toISOString().slice(0, 10) || "",
+            notas: pedido.notas,
+            ubicacion_cliente: pedido.ubicacion_cliente?.latitude
+              ? {
+                  latitude: pedido.ubicacion_cliente.latitude,
+                  longitude: pedido.ubicacion_cliente.longitude,
+                }
+              : null,
           });
         }
       }
@@ -73,20 +82,40 @@ export default function HistorialEntregas() {
     setFiltro({ ...filtro, [e.target.name]: e.target.value });
   };
 
-  const entregasFiltradas = entregas.filter(p =>
-    p.clienteNombre.toLowerCase().includes(filtro.cliente.toLowerCase()) &&
-    p.repartidorNombre.toLowerCase().includes(filtro.repartidor.toLowerCase()) &&
-    p.fecha?.includes(filtro.fecha)
-  );
+const entregasFiltradas = entregas.filter(p =>
+  (p.clienteNombre || "").toLowerCase().includes(filtro.cliente.toLowerCase()) &&
+  (p.repartidorNombre || "").toLowerCase().includes(filtro.repartidor.toLowerCase()) &&
+  (p.fecha_pedido || "").includes(filtro.fecha)
+);
 
-  const descargarRecibo = (pedido) => {
-    const contenido = `Recibo de Entrega\nCliente: ${pedido.clienteNombre}\nDirección: ${pedido.direccion}\nFecha: ${pedido.fecha}\nEstado: ${pedido.estado}`;
-    const blob = new Blob([contenido], { type: "text/plain;charset=utf-8" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `Recibo_${pedido.clienteNombre}_${pedido.fecha}.txt`;
-    link.click();
-  };
+
+
+ const descargarRecibo = (pedido) => {
+  const contenido = `
+🧾 Recibo de Entrega
+
+Cliente: ${pedido.clienteNombre}
+Repartidor: ${pedido.repartidorNombre}
+Dirección: ${pedido.direccion_entrega}
+Fecha del pedido: ${pedido.fecha_pedido}
+Notas: ${pedido.notas}
+Ubicación: ${
+  pedido.ubicacion_cliente
+    ? `${pedido.ubicacion_cliente.latitude}, ${pedido.ubicacion_cliente.longitude}`
+    : "–"
+}
+Estado: ${pedido.estado}
+
+Gracias por su preferencia.
+  `.trim();
+
+  const blob = new Blob([contenido], { type: "text/plain;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `Recibo_${pedido.clienteNombre}_${pedido.fecha_pedido}.txt`;
+  link.click();
+};
+
 
   return (
     <Box sx={{ p: 3 }}>
@@ -108,38 +137,38 @@ export default function HistorialEntregas() {
       <TableContainer component={Paper}>
         <Table>
           <TableHead sx={{ backgroundColor: "#f0f0f0" }}>
-            <TableRow>
-              <TableCell>Cliente</TableCell>
-              <TableCell>Repartidor</TableCell>
-              <TableCell>Dirección</TableCell>
-              <TableCell>Fecha</TableCell>
-              <TableCell>Estado</TableCell>
-              <TableCell>Acción</TableCell>
+          <TableRow>
+            <TableCell>Cliente</TableCell>
+            <TableCell>Repartidor</TableCell>
+            <TableCell>Dirección</TableCell>
+            <TableCell>Fecha Pedido</TableCell>
+            <TableCell>Notas</TableCell>
+            <TableCell>Ubicación</TableCell>
+            <TableCell>Acción</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {entregasFiltradas.map(p => (
+            <TableRow key={p.id}>
+              <TableCell>{p.clienteNombre}</TableCell>
+              <TableCell>{p.repartidorNombre}</TableCell>
+              <TableCell>{p.direccion_entrega || "–"}</TableCell>
+              <TableCell>{p.fecha_pedido || "–"}</TableCell>
+              <TableCell>{p.notas || "–"}</TableCell>
+              <TableCell>
+                {p.ubicacion_cliente
+                  ? `${p.ubicacion_cliente.latitude}, ${p.ubicacion_cliente.longitude}`
+                  : "–"}
+              </TableCell>
+              <TableCell>
+                <Button onClick={() => descargarRecibo(p)} variant="outlined" size="small">
+                  Descargar recibo
+                </Button>
+              </TableCell>
             </TableRow>
-          </TableHead>
-          <TableBody>
-            {entregasFiltradas.map(p => (
-              <TableRow key={p.id}>
-                <TableCell>{p.clienteNombre}</TableCell>
-                <TableCell>{p.repartidorNombre}</TableCell>
-                <TableCell>{p.direccion || "–"}</TableCell>
-                <TableCell>{p.fecha || "–"}</TableCell>
-                <TableCell>{p.estado}</TableCell>
-                <TableCell>
-                  <Button onClick={() => descargarRecibo(p)} variant="outlined" size="small">
-                    Descargar recibo
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-            {entregasFiltradas.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} align="center">
-                  No se encontraron entregas
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
+          ))}
+        </TableBody>
+
         </Table>
       </TableContainer>
     </Box>
