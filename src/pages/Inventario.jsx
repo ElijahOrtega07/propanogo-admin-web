@@ -15,16 +15,16 @@ export default function Inventario() {
   const [filtro, setFiltro] = useState("todos");
   const [openModal, setOpenModal] = useState(false);
   const [productoAReactivar, setProductoAReactivar] = useState(null);
-  const [reactivarDatos, setReactivarDatos] = useState({ cantidad: "", precio: "", galones: "" });
+  const [reactivarDatos, setReactivarDatos] = useState({ cantidad: "", precio: ""});
   const [productoEditar, setProductoEditar] = useState(null);
-  const [datosEditar, setDatosEditar] = useState({ producto: "", precio: "", galones: "" });
+  const [datosEditar, setDatosEditar] = useState({ producto: "", precio: ""});
   const [nuevoProducto, setNuevoProducto] = useState({
     producto: "",
     descripcion: "",
     id_producto: "",
     precio: 0,
     cantidad: 0,
-    galones: 0
+    tipo: "producto",
   });
 
   useEffect(() => {
@@ -61,7 +61,6 @@ export default function Inventario() {
     const { id, cantidad: actualCantidad } = productoAReactivar;
     const cantidad = reactivarDatos.cantidad !== "" ? Number(reactivarDatos.cantidad) : actualCantidad;
     const precio = reactivarDatos.precio !== "" ? Number(reactivarDatos.precio) : productoAReactivar.precio;
-    const galones = reactivarDatos.galones !== "" ? Number(reactivarDatos.galones) : productoAReactivar.galones;
     let estado = "Disponible";
     if (cantidad === 0) estado = "Agotado";
     else if (cantidad < 10) estado = "Bajo inventario";
@@ -69,13 +68,12 @@ export default function Inventario() {
     await updateDoc(doc(firestore, "producto", id), {
       cantidad,
       precio,
-      galones,
       estado,
       activo: true,
       ultimaEntrada
     });
     setProductoAReactivar(null);
-    setReactivarDatos({ cantidad: "", precio: "", galones: "" });
+    setReactivarDatos({ cantidad: "", precio: "" });
     obtenerInventario();
   };
 
@@ -85,8 +83,8 @@ export default function Inventario() {
   };
 
   const agregarProductoNuevo = async () => {
-    const { producto, descripcion, precio, cantidad, galones } = nuevoProducto;
-    if (!producto || !descripcion || precio <= 0 || cantidad < 0 || galones < 0) {
+    const { producto, descripcion, precio, cantidad, tipo} = nuevoProducto;
+    if (!producto || !descripcion || precio <= 0 || cantidad < 0 ) {
       alert("Completa todos los campos correctamente.");
       return;
     }
@@ -102,12 +100,12 @@ export default function Inventario() {
       id_producto,
       precio,
       cantidad,
-      galones,
+      tipo,
       estado,
       activo,
       ultimaEntrada
     });
-    setNuevoProducto({ producto: "", descripcion: "", precio: 0, cantidad: 0, galones: 0 });
+    setNuevoProducto({ producto: "", descripcion: "", precio: 0, cantidad: 0});
     setOpenModal(false);
     obtenerInventario();
   };
@@ -125,18 +123,17 @@ export default function Inventario() {
   const editarProducto = async () => {
     await updateDoc(doc(firestore, "producto", productoEditar.id), {
       producto: datosEditar.producto,
-      precio: Number(datosEditar.precio),
-      galones: Number(datosEditar.galones)
+      precio: Number(datosEditar.precio)
     });
     setProductoEditar(null);
-    setDatosEditar({ producto: "", precio: "", galones: "" });
+    setDatosEditar({ producto: "", precio: ""});
     obtenerInventario();
   };
 
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
-        Gestión de Inventario de Galones
+        Gestión de Inventario
       </Typography>
 
       <Box mb={2}>
@@ -151,10 +148,31 @@ export default function Inventario() {
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <TextField label="Nombre del producto" value={nuevoProducto.producto} onChange={(e) => setNuevoProducto({ ...nuevoProducto, producto: e.target.value })} />
           <TextField label="Descripción" value={nuevoProducto.descripcion} onChange={(e) => setNuevoProducto({ ...nuevoProducto, descripcion: e.target.value })} />
+            <TextField
+              select
+              label="Tipo"
+              value={nuevoProducto.tipo}
+              onChange={(e) => setNuevoProducto({ ...nuevoProducto, tipo: e.target.value })}
+              SelectProps={{ native: true }}
+            >
+              <option value="producto">Producto</option>
+              <option value="servicio">Servicio</option>
+            </TextField>
+
           <TextField label="Precio" type="number" value={nuevoProducto.precio} onChange={(e) => setNuevoProducto({ ...nuevoProducto, precio: Number(e.target.value) })} />
-          <TextField label="Cantidad" type="number" value={nuevoProducto.cantidad} onChange={(e) => setNuevoProducto({ ...nuevoProducto, cantidad: Number(e.target.value) })} />
-          <TextField label="Galones" type="number" value={nuevoProducto.galones} onChange={(e) => setNuevoProducto({ ...nuevoProducto, galones: Number(e.target.value) })} />
-        </DialogContent>
+           
+            {/* Condicionar la cantidad solo si es tipo "producto" */}
+            {nuevoProducto.tipo === "producto" && (
+              <TextField
+                label="Cantidad"
+                type="number"
+                value={nuevoProducto.cantidad}
+                onChange={(e) =>
+                  setNuevoProducto({ ...nuevoProducto, cantidad: Number(e.target.value) })
+                }
+              />
+            )}
+          </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenModal(false)}>Cancelar</Button>
           <Button onClick={agregarProductoNuevo} variant="contained" color="primary">Guardar</Button>
@@ -168,7 +186,6 @@ export default function Inventario() {
           <Typography variant="body2">Producto: {productoAReactivar?.producto}</Typography>
           <TextField label="Nueva cantidad" type="number" value={reactivarDatos.cantidad} onChange={(e) => setReactivarDatos({ ...reactivarDatos, cantidad: e.target.value })} />
           <TextField label="Nuevo precio" type="number" value={reactivarDatos.precio} onChange={(e) => setReactivarDatos({ ...reactivarDatos, precio: e.target.value })} />
-          <TextField label="Galones disponibles" type="number" value={reactivarDatos.galones} onChange={(e) => setReactivarDatos({ ...reactivarDatos, galones: e.target.value })} />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setProductoAReactivar(null)}>Cancelar</Button>
@@ -182,7 +199,6 @@ export default function Inventario() {
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <TextField label="Nuevo nombre" value={datosEditar.producto} onChange={(e) => setDatosEditar({ ...datosEditar, producto: e.target.value })} />
           <TextField label="Nuevo precio" type="number" value={datosEditar.precio} onChange={(e) => setDatosEditar({ ...datosEditar, precio: e.target.value })} />
-          <TextField label="Galones" type="number" value={datosEditar.galones} onChange={(e) => setDatosEditar({ ...datosEditar, galones: e.target.value })} />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setProductoEditar(null)}>Cancelar</Button>
@@ -209,7 +225,6 @@ export default function Inventario() {
             <TableRow>
               <TableCell>Producto</TableCell>
               <TableCell>Cantidad</TableCell>
-              <TableCell>Galones</TableCell>
               <TableCell>Precio</TableCell>
               <TableCell>Última Entrada</TableCell>
               <TableCell>Estado</TableCell>
@@ -221,7 +236,6 @@ export default function Inventario() {
               <TableRow key={g.id}>
                 <TableCell>{g.producto}</TableCell>
                 <TableCell>{g.cantidad}</TableCell>
-                <TableCell>{g.galones ?? 0}</TableCell>
                 <TableCell>${g.precio}</TableCell>
                 <TableCell>{g.ultimaEntrada}</TableCell>
                 <TableCell>
@@ -238,7 +252,7 @@ export default function Inventario() {
                       <Button variant="outlined" size="small" color="warning" onClick={() => desactivarProducto(g.id)}>Desactivar</Button>{" "}
                       <Button variant="outlined" size="small" color="info" onClick={() => {
                         setProductoEditar(g);
-                        setDatosEditar({ producto: g.producto, precio: g.precio, galones: g.galones });
+                        setDatosEditar({ producto: g.producto, precio: g.precio});
                       }}>Editar</Button>
                     </>
                   ) : (
