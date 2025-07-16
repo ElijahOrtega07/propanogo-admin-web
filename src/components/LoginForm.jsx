@@ -5,6 +5,9 @@ import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth, firestore } from "../firebase/firebaseConfig";
 import { doc, onSnapshot } from "firebase/firestore";
 
+import backgroundImg from "../assets/background.jpg";
+import logoImg from "../assets/logo.png";
+
 export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
@@ -18,39 +21,24 @@ export default function LoginForm() {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
       const user = userCredential.user;
-      console.log("✅ Usuario autenticado:", user.uid);
 
       const userRef = doc(firestore, "usuario", user.uid);
-
-      // 👂 Escuchar en tiempo real
       const unsubscribe = onSnapshot(userRef, async (userSnap) => {
-        console.log("📥 Documento obtenido:", userSnap.exists());
-
         if (userSnap.exists()) {
           const userData = userSnap.data();
-          console.log("🎯 Rol en tiempo real:", userData.rol);
-
           if (userData.rol === "administrador") {
-            console.log("✅ Acceso concedido");
             unsubscribe();
             navigate("/dashboard");
           } else {
-            console.warn("❌ Acceso denegado: No es administrador.");
             await signOut(auth);
             setError("Acceso denegado: No eres administrador.");
           }
         } else {
-          console.warn("❌ Documento no encontrado");
           await signOut(auth);
           setError("No se encontró información del usuario.");
         }
-
-        // ❗ Puedes cancelar la suscripción si solo quieres validar una vez
-        // unsubscribe();
       });
-
     } catch (error) {
-      console.error("❗ Error al iniciar sesión:", error);
       setError("Correo o contraseña inválidos.");
     }
   };
@@ -58,17 +46,65 @@ export default function LoginForm() {
   return (
     <Box
       sx={{
+        position: "relative",
         height: "100vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: "#f0f2f5"
+        p: 2,
+        overflow: "hidden",
       }}
     >
-      <Paper sx={{ p: 4, width: 320 }}>
-        <Typography variant="h5" mb={2} align="center">
+      {/* Imagen de fondo con blur */}
+      <Box
+        sx={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          backgroundImage: `url(${backgroundImg})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          filter: "blur(8px)",
+          zIndex: 0,
+          transform: "scale(1.1)",
+        }}
+      />
+
+      {/* Formulario encima del fondo borroso */}
+      <Paper
+        sx={{
+          p: 4,
+          width: 320,
+          textAlign: "center",
+          zIndex: 1,
+          position: "relative",
+          backgroundColor: "rgba(255, 255, 255, 0.85)", // fondo semi-transparente para mejor lectura
+          boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
+          borderRadius: 2,
+        }}
+      >
+       <Box
+          component="img"
+          src={logoImg}
+          alt="Logo"
+          sx={{
+            width: 120,
+            height: 120,              // Le das forma cuadrada para redondearlo bien
+            mb: 3,
+            mx: "auto",
+            display: "block",
+            objectFit: "cover",       // Para que no se deforme
+            borderRadius: 4,          // Esquinas ligeramente redondeadas
+            boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)" // Sombra sutil
+          }}
+          />
+
+        <Typography variant="h5" mb={2}>
           PropanoGO Admin
         </Typography>
+
         <form onSubmit={onSubmit}>
           <TextField
             label="Correo"
@@ -93,12 +129,7 @@ export default function LoginForm() {
               {error}
             </Typography>
           )}
-          <Button
-            type="submit"
-            variant="contained"
-            fullWidth
-            sx={{ mt: 2 }}
-          >
+          <Button type="submit" variant="contained" fullWidth sx={{ mt: 2 }}>
             Entrar
           </Button>
         </form>

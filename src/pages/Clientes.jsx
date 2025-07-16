@@ -2,9 +2,12 @@ import React, { useEffect, useState } from "react";
 import {
   Box, Typography, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper,
-  Button, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField, Grid, MenuItem
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, Grid, MenuItem, IconButton, Tooltip, Button,
 } from "@mui/material";
+import {
+  ToggleOn, ToggleOff, Edit, History
+} from "@mui/icons-material";
 import {
   collection, getDocs, doc, updateDoc, query, where
 } from "firebase/firestore";
@@ -160,27 +163,37 @@ export default function Clientes() {
                 <TableCell>{cliente.pedidosRealizados}</TableCell>
                 <TableCell>{cliente.contacto}</TableCell>
                 <TableCell>
-                  <Button
-                    onClick={() => toggleEstado(cliente.id, cliente.estado)}
-                    size="small"
-                  >
-                    {cliente.estado === "Activo" ? "Inactivar" : "Activar"}
-                  </Button>
+                  <Tooltip title={cliente.estado === "Activo" ? "Inactivar cliente" : "Activar cliente"}>
+                    <IconButton
+                      onClick={() => toggleEstado(cliente.id, cliente.estado)}
+                      color={cliente.estado === "Activo" ? "success" : "default"}
+                      size="small"
+                    >
+                      {cliente.estado === "Activo" ? <ToggleOn /> : <ToggleOff />}
+                    </IconButton>
+                  </Tooltip>
                 </TableCell>
                 <TableCell>
-                  <Button
-                    size="small"
-                    onClick={() => navigate(`/historial?cliente=${cliente.nombre}`)}
-                  >
-                    Ver Historial
-                  </Button>
-                  <Button
-                    size="small"
-                    color="primary"
-                    onClick={() => abrirEdicion(cliente)}
-                  >
-                    Editar
-                  </Button>
+                  <Box sx={{ display: "flex", gap: 1 }}>
+                    <Tooltip title="Ver historial">
+                      <IconButton
+                        size="small"
+                        color="info"
+                        onClick={() => navigate(`/historial?cliente=${cliente.nombre}`)}
+                      >
+                        <History />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Editar cliente">
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => abrirEdicion(cliente)}
+                      >
+                        <Edit />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
                 </TableCell>
               </TableRow>
             ))}

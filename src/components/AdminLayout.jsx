@@ -1,88 +1,124 @@
 import React from "react";
-import { Drawer, List, ListItem, ListItemIcon, ListItemText, Toolbar, AppBar, Typography, Box } from "@mui/material";
+import {
+  Drawer, List, ListItem, ListItemIcon, ListItemText,
+  Toolbar, AppBar, Typography, Box
+} from "@mui/material";
 import DashboardIcon from "@mui/icons-material/Dashboard";
-import ListIcon      from "@mui/icons-material/List";
-import PersonIcon    from "@mui/icons-material/Person";
-import { Link, Outlet } from "react-router-dom";
+import ListIcon from "@mui/icons-material/List";
+import PersonIcon from "@mui/icons-material/Person";
 import GroupIcon from "@mui/icons-material/Group";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import SettingsIcon from "@mui/icons-material/Settings";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import { Link, Outlet, useNavigate } from "react-router-dom";
+import { signOut } from "firebase/auth";
+import { auth } from "../firebase/firebaseConfig";
 
-
-
+// ✅ Importa el logo
+import logo from "../assets/logo-transparente.png";
 
 const drawerWidth = 240;
 
 export default function AdminLayout() {
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate("/login");
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+      alert("Ocurrió un error al cerrar sesión.");
+    }
+  };
+
   return (
     <Box sx={{ display: "flex" }}>
-      {/* AppBar */}
+      {/* AppBar superior */}
       <AppBar
         position="fixed"
-        sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, ml: `${drawerWidth}px`, width: `calc(100% - ${drawerWidth}px)` }}
+        sx={{
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+          ml: `${drawerWidth}px`,
+          width: `calc(100% - ${drawerWidth}px)`,
+          bgcolor: "#1565c0",
+          display: "flex",
+          justifyContent: "space-between",
+          px: 2,
+        }}
       >
-        <Toolbar>
+        <Toolbar sx={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
           <Typography variant="h6" noWrap>
             PropanoGO Admin
+          </Typography>
+          <Typography
+            sx={{ cursor: "pointer", fontWeight: "bold" }}
+            onClick={handleLogout}
+          >
+            Cerrar sesión
           </Typography>
         </Toolbar>
       </AppBar>
 
-      {/* Sidebar */}
+      {/* Sidebar con logo y menú */}
       <Drawer
         variant="permanent"
         sx={{
           width: drawerWidth,
           flexShrink: 0,
-          [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: "border-box" }
+          [`& .MuiDrawer-paper`]: {
+            width: drawerWidth,
+            boxSizing: "border-box",
+            bgcolor: "#1565c0",
+            color: "white",
+          },
         }}
       >
         <Toolbar />
+
+        {/* ✅ Logo centrado arriba del menú */}
+        <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+          <img src={logo} alt="Logo" style={{ width: "120px" }} />
+        </Box>
+
         <List>
-          <ListItem button component={Link} to="/dashboard">
-            <ListItemIcon><DashboardIcon /></ListItemIcon>
+          <ListItem button component={Link} to="/dashboard" sx={{ color: "white" }}>
+            <ListItemIcon sx={{ color: "white" }}><DashboardIcon /></ListItemIcon>
             <ListItemText primary="Inicio" />
           </ListItem>
-          <ListItem button component={Link} to="/pedidos">
-            <ListItemIcon><ListIcon /></ListItemIcon>
+          <ListItem button component={Link} to="/pedidos" sx={{ color: "white" }}>
+            <ListItemIcon sx={{ color: "white" }}><ListIcon /></ListItemIcon>
             <ListItemText primary="Pedidos" />
           </ListItem>
-          <ListItem button component={Link} to="/repartidores">
-            <ListItemIcon><PersonIcon /></ListItemIcon>
+          <ListItem button component={Link} to="/repartidores" sx={{ color: "white" }}>
+            <ListItemIcon sx={{ color: "white" }}><PersonIcon /></ListItemIcon>
             <ListItemText primary="Repartidores" />
           </ListItem>
-          <ListItem button component={Link} to="/clientes">
-   <ListItemIcon><GroupIcon /></ListItemIcon>
-  <ListItemText primary="Clientes" />
-</ListItem>
-
-<ListItem button component={Link} to="/inventario">
-  <ListItemIcon><InventoryIcon /></ListItemIcon>
-  <ListItemText primary="Inventario" />
-</ListItem>
-
-
-<ListItem button component={Link} to="/reportes">
-  <ListItemIcon><AssessmentIcon /></ListItemIcon>
-  <ListItemText primary="Reportes" />
-</ListItem>
-
-<ListItem button component={Link} to="/historial">
-  <ListItemIcon><ReceiptLongIcon /></ListItemIcon>
-  <ListItemText primary="Historial" />
-</ListItem>
-
-<ListItem button component={Link} to="/configuracion">
-  <ListItemIcon><SettingsIcon /></ListItemIcon>
-  <ListItemText primary="Configuración" />
-</ListItem>
-
+          <ListItem button component={Link} to="/clientes" sx={{ color: "white" }}>
+            <ListItemIcon sx={{ color: "white" }}><GroupIcon /></ListItemIcon>
+            <ListItemText primary="Clientes" />
+          </ListItem>
+          <ListItem button component={Link} to="/inventario" sx={{ color: "white" }}>
+            <ListItemIcon sx={{ color: "white" }}><InventoryIcon /></ListItemIcon>
+            <ListItemText primary="Inventario" />
+          </ListItem>
+          <ListItem button component={Link} to="/reportes" sx={{ color: "white" }}>
+            <ListItemIcon sx={{ color: "white" }}><AssessmentIcon /></ListItemIcon>
+            <ListItemText primary="Reportes" />
+          </ListItem>
+          <ListItem button component={Link} to="/historial" sx={{ color: "white" }}>
+            <ListItemIcon sx={{ color: "white" }}><ReceiptLongIcon /></ListItemIcon>
+            <ListItemText primary="Historial" />
+          </ListItem>
+          <ListItem button component={Link} to="/configuracion" sx={{ color: "white" }}>
+            <ListItemIcon sx={{ color: "white" }}><SettingsIcon /></ListItemIcon>
+            <ListItemText primary="Configuración" />
+          </ListItem>
         </List>
       </Drawer>
 
-      {/* Main content */}
+      {/* Contenido principal */}
       <Box component="main" sx={{ flexGrow: 1, p: 3, mt: 8 }}>
         <Outlet />
       </Box>

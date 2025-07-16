@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
 import {
   Box, Typography, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Paper, Tabs, Tab, Button, Select, MenuItem, FormControl, InputLabel
+  TableHead, TableRow, Paper, Tabs, Tab, Button, Select, MenuItem, FormControl, InputLabel, IconButton
 } from "@mui/material";
+import DeleteForeverRounded from "@mui/icons-material/DeleteForeverRounded";
 import {
   collection, onSnapshot, doc, updateDoc, getDocs, deleteDoc
 } from "firebase/firestore";
 import { firestore } from "../firebase/firebaseConfig";
+
 
 export default function Pedidos() {
   const [pedidos, setPedidos] = useState([]);
@@ -153,13 +155,13 @@ export default function Pedidos() {
                     : "–"}
                 </TableCell>
                 <TableCell>
-                  <Button
-                    color="error"
-                    onClick={() => eliminarPedido(pedido.id)}
-                  >
-                    Eliminar
-                  </Button>
-                </TableCell>
+  <IconButton
+    color="error"
+    onClick={() => eliminarPedido(pedido.id)}
+  >
+    <DeleteForeverRounded />
+  </IconButton>
+</TableCell>
                 <TableCell>
                   {/* Mostrar solo para pedidos Pendiente */}
                   {pedido.estado === "Pendiente" && (

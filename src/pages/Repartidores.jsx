@@ -1,21 +1,12 @@
 import React, { useEffect, useState } from "react";
 import {
-  Box,
-  Typography,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  TableContainer,
-  Paper,
-  Button,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem
+  Box, Typography, Table, TableHead, TableRow, TableCell,
+  TableBody, TableContainer, Paper, TextField, FormControl,
+  InputLabel, Select, MenuItem, IconButton, Tooltip,
 } from "@mui/material";
+import {
+  ToggleOn, ToggleOff, History, Save
+} from "@mui/icons-material";
 import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { firestore } from "../firebase/firebaseConfig";
 import { useNavigate } from "react-router-dom";
@@ -23,15 +14,25 @@ import { useNavigate } from "react-router-dom";
 export default function Repartidores() {
   const [repartidores, setRepartidores] = useState([]);
   const [filtro, setFiltro] = useState({ nombre: "", estado: "Todos" });
-  const navigate = useNavigate();
   const [zonasDisponibles, setZonasDisponibles] = useState([]);
-
+  const navigate = useNavigate();
 
   useEffect(() => {
     const q = query(collection(firestore, "usuario"), where("rol", "==", "repartidor"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const lista = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setRepartidores(lista);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(firestore, "zonas_reparto"), (snapshot) => {
+      const zonas = snapshot.docs.map(doc => ({
+        id: doc.id,
+        nombre: doc.data().nombre || "Sin nombre"
+      }));
+      setZonasDisponibles(zonas);
     });
     return () => unsubscribe();
   }, []);
@@ -45,31 +46,14 @@ export default function Repartidores() {
     setFiltro({ ...filtro, [e.target.name]: e.target.value });
   };
 
+  const verHistorial = (nombre) => {
+    navigate(`/historial?repartidor=${encodeURIComponent(nombre)}`);
+  };
+
   const repartidoresFiltrados = repartidores.filter(r =>
     r.nombre.toLowerCase().includes(filtro.nombre.toLowerCase()) &&
     (filtro.estado === "Todos" || r.estado === filtro.estado)
   );
-
-  const verHistorial = (repartidorNombre) => {
-    // Redirige a /historial con un parámetro de búsqueda
-    navigate(`/historial?repartidor=${encodeURIComponent(repartidorNombre)}`);
-  };
-
-  useEffect(() => {
-    const unsubscribe = onSnapshot(collection(firestore, "zonas_reparto"), (snapshot) => {
-      const zonas = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id, // Por si necesitas usar el ID
-          nombre: data.nombre || "Sin nombre"
-        };
-      });
-      setZonasDisponibles(zonas);
-    });
-    return () => unsubscribe();
-  }, []);
-
-
 
   return (
     <Box sx={{ p: 3 }}>
@@ -102,7 +86,6 @@ export default function Repartidores() {
         </FormControl>
       </Box>
 
-      {/* Tabla */}
       <TableContainer component={Paper}>
         <Table>
           <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
@@ -115,81 +98,81 @@ export default function Repartidores() {
             </TableRow>
           </TableHead>
           <TableBody>
-          {repartidoresFiltrados.map(rep => (
-            <TableRow key={rep.id}>
-              <TableCell>{rep.nombre}</TableCell>
-              <TableCell>{rep.telefono || "––"}</TableCell>
+            {repartidoresFiltrados.map(rep => (
+              <TableRow key={rep.id}>
+                <TableCell>{rep.nombre}</TableCell>
+                <TableCell>{rep.telefono || "––"}</TableCell>
 
-              {/* Campo editable de zona */}
-             <TableCell>
-              <FormControl fullWidth size="small">
-                <Select
-                  value={rep.zona || ""}
-                  onChange={(e) => {
-                    const nuevaZona = e.target.value;
-                    setRepartidores(prev =>
-                      prev.map(r =>
-                        r.id === rep.id ? { ...r, zona: nuevaZona } : r
-                      )
-                    );
-                  }}
-                  displayEmpty
-                  >
-                  <MenuItem value="">-- Sin zona --</MenuItem>
-                  {zonasDisponibles.map((zona) => (
-                    <MenuItem key={zona.id} value={zona.nombre}>
-                      {zona.nombre}
-                    </MenuItem>
-                  ))}
-                </Select>
+                <TableCell>
+                  <FormControl fullWidth size="small">
+                    <Select
+                      value={rep.zona || ""}
+                      onChange={(e) => {
+                        const nuevaZona = e.target.value;
+                        setRepartidores(prev =>
+                          prev.map(r =>
+                            r.id === rep.id ? { ...r, zona: nuevaZona } : r
+                          )
+                        );
+                      }}
+                      displayEmpty
+                    >
+                      <MenuItem value="">-- Sin zona --</MenuItem>
+                      {zonasDisponibles.map((zona) => (
+                        <MenuItem key={zona.id} value={zona.nombre}>
+                          {zona.nombre}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </TableCell>
 
-              </FormControl>
-            </TableCell>
+                <TableCell>
+                  <Tooltip title={rep.estado === "Activo" ? "Inactivar" : "Activar"}>
+                    <IconButton
+                      onClick={() => toggleEstado(rep.id, rep.estado)}
+                      color={rep.estado === "Activo" ? "success" : "default"}
+                      size="small"
+                    >
+                      {rep.estado === "Activo" ? <ToggleOn /> : <ToggleOff />}
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
 
-
-              {/* Botón para activar/inactivar */}
-              <TableCell>
-                <Button
-                  onClick={() => toggleEstado(rep.id, rep.estado)}
-                  size="small"
-                >
-                  {rep.estado === "Activo" ? "Inactivar" : "Activar"}
-                </Button>
-              </TableCell>
-
-              {/* Acciones adicionales */}
-              <TableCell sx={{ display: "flex", gap: 1 }}>
-                <Button onClick={() => verHistorial(rep.nombre)} size="small">
-                  Ver historial
-                </Button>
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={async () => {
-                    try {
-                      const repartidorRef = doc(firestore, "usuario", rep.id);
-                      await updateDoc(repartidorRef, { zona: rep.zona || "" });
-                      alert("Zona actualizada correctamente");
-                    } catch (error) {
-                      alert("Error al actualizar zona: " + error.message);
-                    }
-                  }}
-                >
-                  Guardar zona
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-
-          {repartidoresFiltrados.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={5} align="center">
-                No hay repartidores registrados
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-
+                <TableCell>
+                  <Tooltip title="Ver historial">
+                    <IconButton onClick={() => verHistorial(rep.nombre)} size="small" color="info">
+                      <History />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Guardar zona">
+                    <IconButton
+                      onClick={async () => {
+                        try {
+                          const repartidorRef = doc(firestore, "usuario", rep.id);
+                          await updateDoc(repartidorRef, { zona: rep.zona || "" });
+                          alert("Zona actualizada correctamente");
+                        } catch (error) {
+                          alert("Error al actualizar zona: " + error.message);
+                        }
+                      }}
+                      size="small"
+                      color="secondary"
+                    >
+                      <Save />
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
+              </TableRow>
+            ))}
+            {repartidoresFiltrados.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} align="center">
+                  No hay repartidores registrados
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
         </Table>
       </TableContainer>
     </Box>

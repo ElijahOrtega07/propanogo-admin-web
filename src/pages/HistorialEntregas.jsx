@@ -2,11 +2,15 @@ import React, { useState, useEffect } from "react";
 import {
   Box, Typography, Table, TableHead, TableRow,
   TableCell, TableBody, TableContainer, Paper,
-  TextField, Button
+  TextField
 } from "@mui/material";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
+import DownloadIcon from "@mui/icons-material/Download";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import { firestore } from "../firebase/firebaseConfig";
 import { useLocation } from "react-router-dom";
+import { jsPDF } from "jspdf"; // Importar jsPDF
 
 export default function HistorialEntregas() {
   const [entregas, setEntregas] = useState([]);
@@ -18,14 +22,13 @@ export default function HistorialEntregas() {
     const params = new URLSearchParams(location.search);
     const nombreRepartidor = params.get("repartidor");
     const nombreCliente = params.get("cliente");
-  
+
     setFiltro((prev) => ({
       ...prev,
       repartidor: nombreRepartidor || "",
       cliente: nombreCliente || ""
     }));
   }, [location.search]);
-  
 
   useEffect(() => {
     const obtenerEntregas = async () => {
@@ -82,40 +85,49 @@ export default function HistorialEntregas() {
     setFiltro({ ...filtro, [e.target.name]: e.target.value });
   };
 
-const entregasFiltradas = entregas.filter(p =>
-  (p.clienteNombre || "").toLowerCase().includes(filtro.cliente.toLowerCase()) &&
-  (p.repartidorNombre || "").toLowerCase().includes(filtro.repartidor.toLowerCase()) &&
-  (p.fecha_pedido || "").includes(filtro.fecha)
-);
+  const entregasFiltradas = entregas.filter(p =>
+    (p.clienteNombre || "").toLowerCase().includes(filtro.cliente.toLowerCase()) &&
+    (p.repartidorNombre || "").toLowerCase().includes(filtro.repartidor.toLowerCase()) &&
+    (p.fecha_pedido || "").includes(filtro.fecha)
+  );
 
+  // Función para descargar recibo en PDF
+  const descargarRecibo = (pedido) => {
+    const doc = new jsPDF();
 
+    const lineHeight = 10;
+    let y = 10;
 
- const descargarRecibo = (pedido) => {
-  const contenido = `
-🧾 Recibo de Entrega
+    doc.setFontSize(16);
+    doc.text(" Recibo de Entrega", 10, y);
+    y += lineHeight * 1.5;
 
-Cliente: ${pedido.clienteNombre}
-Repartidor: ${pedido.repartidorNombre}
-Dirección: ${pedido.direccion_entrega}
-Fecha del pedido: ${pedido.fecha_pedido}
-Notas: ${pedido.notas}
-Ubicación: ${
-  pedido.ubicacion_cliente
-    ? `${pedido.ubicacion_cliente.latitude}, ${pedido.ubicacion_cliente.longitude}`
-    : "–"
-}
-Estado: ${pedido.estado}
+    doc.setFontSize(12);
+    doc.text(`Cliente: ${pedido.clienteNombre}`, 10, y);
+    y += lineHeight;
+    doc.text(`Repartidor: ${pedido.repartidorNombre}`, 10, y);
+    y += lineHeight;
+    doc.text(`Dirección: ${pedido.direccion_entrega || "–"}`, 10, y);
+    y += lineHeight;
+    doc.text(`Fecha del pedido: ${pedido.fecha_pedido || "–"}`, 10, y);
+    y += lineHeight;
+    doc.text(`Notas: ${pedido.notas || "–"}`, 10, y);
+    y += lineHeight;
 
-Gracias por su preferencia.
-  `.trim();
+    const ubicacionTexto = pedido.ubicacion_cliente
+      ? `${pedido.ubicacion_cliente.latitude}, ${pedido.ubicacion_cliente.longitude}`
+      : "–";
+    doc.text(`Ubicación: ${ubicacionTexto}`, 10, y);
+    y += lineHeight;
 
-  const blob = new Blob([contenido], { type: "text/plain;charset=utf-8" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `Recibo_${pedido.clienteNombre}_${pedido.fecha_pedido}.txt`;
-  link.click();
-};
+    doc.text(`Estado: ${pedido.estado}`, 10, y);
+    y += lineHeight * 2;
 
+    doc.text("Gracias por su preferencia.", 10, y);
+
+    // Descargar el PDF con nombre personalizado
+    doc.save(`Recibo_${pedido.clienteNombre}_${pedido.fecha_pedido}.pdf`);
+  };
 
   return (
     <Box sx={{ p: 3 }}>
@@ -137,38 +149,39 @@ Gracias por su preferencia.
       <TableContainer component={Paper}>
         <Table>
           <TableHead sx={{ backgroundColor: "#f0f0f0" }}>
-          <TableRow>
-            <TableCell>Cliente</TableCell>
-            <TableCell>Repartidor</TableCell>
-            <TableCell>Dirección</TableCell>
-            <TableCell>Fecha Pedido</TableCell>
-            <TableCell>Notas</TableCell>
-            <TableCell>Ubicación</TableCell>
-            <TableCell>Acción</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {entregasFiltradas.map(p => (
-            <TableRow key={p.id}>
-              <TableCell>{p.clienteNombre}</TableCell>
-              <TableCell>{p.repartidorNombre}</TableCell>
-              <TableCell>{p.direccion_entrega || "–"}</TableCell>
-              <TableCell>{p.fecha_pedido || "–"}</TableCell>
-              <TableCell>{p.notas || "–"}</TableCell>
-              <TableCell>
-                {p.ubicacion_cliente
-                  ? `${p.ubicacion_cliente.latitude}, ${p.ubicacion_cliente.longitude}`
-                  : "–"}
-              </TableCell>
-              <TableCell>
-                <Button onClick={() => descargarRecibo(p)} variant="outlined" size="small">
-                  Descargar recibo
-                </Button>
-              </TableCell>
+            <TableRow>
+              <TableCell>Cliente</TableCell>
+              <TableCell>Repartidor</TableCell>
+              <TableCell>Dirección</TableCell>
+              <TableCell>Fecha Pedido</TableCell>
+              <TableCell>Notas</TableCell>
+              <TableCell>Ubicación</TableCell>
+              <TableCell>Acción</TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-
+          </TableHead>
+          <TableBody>
+            {entregasFiltradas.map(p => (
+              <TableRow key={p.id}>
+                <TableCell>{p.clienteNombre}</TableCell>
+                <TableCell>{p.repartidorNombre}</TableCell>
+                <TableCell>{p.direccion_entrega || "–"}</TableCell>
+                <TableCell>{p.fecha_pedido || "–"}</TableCell>
+                <TableCell>{p.notas || "–"}</TableCell>
+                <TableCell>
+                  {p.ubicacion_cliente
+                    ? `${p.ubicacion_cliente.latitude}, ${p.ubicacion_cliente.longitude}`
+                    : "–"}
+                </TableCell>
+                <TableCell>
+                  <Tooltip title="Descargar recibo">
+                    <IconButton onClick={() => descargarRecibo(p)} color="primary">
+                      <DownloadIcon />
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
         </Table>
       </TableContainer>
     </Box>

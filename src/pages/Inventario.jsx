@@ -2,22 +2,27 @@ import React, { useEffect, useState } from "react";
 import {
   Box, Typography, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, Button, Dialog,
-  DialogTitle, DialogContent, DialogActions, TextField
+  DialogTitle, DialogContent, DialogActions, TextField, Tooltip, IconButton
 } from "@mui/material";
 import {
   collection, getDocs, updateDoc, doc, addDoc
 } from "firebase/firestore";
 import { firestore } from "../firebase/firebaseConfig";
 import { v4 as uuidv4 } from 'uuid';
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Block";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
 
 export default function Inventario() {
   const [productos, setProductos] = useState([]);
   const [filtro, setFiltro] = useState("todos");
   const [openModal, setOpenModal] = useState(false);
   const [productoAReactivar, setProductoAReactivar] = useState(null);
-  const [reactivarDatos, setReactivarDatos] = useState({ cantidad: "", precio: ""});
+  const [reactivarDatos, setReactivarDatos] = useState({ cantidad: "", precio: "" });
   const [productoEditar, setProductoEditar] = useState(null);
-  const [datosEditar, setDatosEditar] = useState({ producto: "", precio: ""});
+  const [datosEditar, setDatosEditar] = useState({ producto: "", precio: "" });
   const [nuevoProducto, setNuevoProducto] = useState({
     producto: "",
     descripcion: "",
@@ -83,8 +88,8 @@ export default function Inventario() {
   };
 
   const agregarProductoNuevo = async () => {
-    const { producto, descripcion, precio, cantidad, tipo} = nuevoProducto;
-    if (!producto || !descripcion || precio <= 0 || cantidad < 0 ) {
+    const { producto, descripcion, precio, cantidad, tipo } = nuevoProducto;
+    if (!producto || !descripcion || precio <= 0 || cantidad < 0) {
       alert("Completa todos los campos correctamente.");
       return;
     }
@@ -105,7 +110,7 @@ export default function Inventario() {
       activo,
       ultimaEntrada
     });
-    setNuevoProducto({ producto: "", descripcion: "", precio: 0, cantidad: 0});
+    setNuevoProducto({ producto: "", descripcion: "", precio: 0, cantidad: 0, tipo: "producto" });
     setOpenModal(false);
     obtenerInventario();
   };
@@ -126,7 +131,7 @@ export default function Inventario() {
       precio: Number(datosEditar.precio)
     });
     setProductoEditar(null);
-    setDatosEditar({ producto: "", precio: ""});
+    setDatosEditar({ producto: "", precio: "" });
     obtenerInventario();
   };
 
@@ -148,31 +153,21 @@ export default function Inventario() {
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <TextField label="Nombre del producto" value={nuevoProducto.producto} onChange={(e) => setNuevoProducto({ ...nuevoProducto, producto: e.target.value })} />
           <TextField label="Descripción" value={nuevoProducto.descripcion} onChange={(e) => setNuevoProducto({ ...nuevoProducto, descripcion: e.target.value })} />
-            <TextField
-              select
-              label="Tipo"
-              value={nuevoProducto.tipo}
-              onChange={(e) => setNuevoProducto({ ...nuevoProducto, tipo: e.target.value })}
-              SelectProps={{ native: true }}
-            >
-              <option value="producto">Producto</option>
-              <option value="servicio">Servicio</option>
-            </TextField>
-
+          <TextField
+            select
+            label="Tipo"
+            value={nuevoProducto.tipo}
+            onChange={(e) => setNuevoProducto({ ...nuevoProducto, tipo: e.target.value })}
+            SelectProps={{ native: true }}
+          >
+            <option value="producto">Producto</option>
+            <option value="servicio">Servicio</option>
+          </TextField>
           <TextField label="Precio" type="number" value={nuevoProducto.precio} onChange={(e) => setNuevoProducto({ ...nuevoProducto, precio: Number(e.target.value) })} />
-           
-            {/* Condicionar la cantidad solo si es tipo "producto" */}
-            {nuevoProducto.tipo === "producto" && (
-              <TextField
-                label="Cantidad"
-                type="number"
-                value={nuevoProducto.cantidad}
-                onChange={(e) =>
-                  setNuevoProducto({ ...nuevoProducto, cantidad: Number(e.target.value) })
-                }
-              />
-            )}
-          </DialogContent>
+          {nuevoProducto.tipo === "producto" && (
+            <TextField label="Cantidad" type="number" value={nuevoProducto.cantidad} onChange={(e) => setNuevoProducto({ ...nuevoProducto, cantidad: Number(e.target.value) })} />
+          )}
+        </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenModal(false)}>Cancelar</Button>
           <Button onClick={agregarProductoNuevo} variant="contained" color="primary">Guardar</Button>
@@ -247,18 +242,36 @@ export default function Inventario() {
                 <TableCell>
                   {g.activo ? (
                     <>
-                      <Button variant="outlined" size="small" color="success" onClick={() => actualizarCantidad(g.id, g.cantidad, 1)}>Agregar</Button>{" "}
-                      <Button variant="outlined" size="small" color="error" onClick={() => actualizarCantidad(g.id, g.cantidad, -1)}>Descontar</Button>{" "}
-                      <Button variant="outlined" size="small" color="warning" onClick={() => desactivarProducto(g.id)}>Desactivar</Button>{" "}
-                      <Button variant="outlined" size="small" color="info" onClick={() => {
-                        setProductoEditar(g);
-                        setDatosEditar({ producto: g.producto, precio: g.precio});
-                      }}>Editar</Button>
+                      <Tooltip title="Agregar cantidad">
+                        <IconButton color="success" onClick={() => actualizarCantidad(g.id, g.cantidad, 1)}>
+                          <AddIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Descontar cantidad">
+                        <IconButton color="error" onClick={() => actualizarCantidad(g.id, g.cantidad, -1)}>
+                          <RemoveIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Desactivar producto">
+                        <IconButton color="warning" onClick={() => desactivarProducto(g.id)}>
+                          <DeleteIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Editar producto">
+                        <IconButton color="info" onClick={() => {
+                          setProductoEditar(g);
+                          setDatosEditar({ producto: g.producto, precio: g.precio });
+                        }}>
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
                     </>
                   ) : (
-                    <Button variant="outlined" size="small" onClick={() => setProductoAReactivar(g)}>
-                      Reactivar producto
-                    </Button>
+                    <Tooltip title="Reactivar producto">
+                      <IconButton onClick={() => setProductoAReactivar(g)}>
+                        <RestartAltIcon />
+                      </IconButton>
+                    </Tooltip>
                   )}
                 </TableCell>
               </TableRow>
