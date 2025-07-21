@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Drawer, List, ListItem, ListItemIcon, ListItemText,
   Toolbar, AppBar, Typography, Box
@@ -12,30 +12,69 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import { Link, Outlet, useNavigate } from "react-router-dom";
-import { signOut } from "firebase/auth";
+import { signOut, onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase/firebaseConfig";
 
-// ✅ Importa el logo
 import logo from "../assets/logo-transparente.png";
 
 const drawerWidth = 240;
 
 export default function AdminLayout() {
   const navigate = useNavigate();
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        setCheckingAuth(false);
+      } else {
+        setUser(null);
+        setCheckingAuth(false);
+        // Usa setTimeout para que el navigate no interfiera con el ciclo de render
+        setTimeout(() => {
+          navigate("/login", { replace: true });
+        }, 0);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [navigate]);
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      navigate("/login");
+      navigate("/login", { replace: true });
     } catch (error) {
-      console.error("Error al cerrar sesión:", error);
       alert("Ocurrió un error al cerrar sesión.");
+      console.error(error);
     }
   };
 
+  if (checkingAuth) {
+    return (
+      <Box
+        sx={{ height: "100vh", display: "flex", justifyContent: "center", alignItems: "center" }}
+      >
+        <Typography variant="h6">Verificando sesión...</Typography>
+      </Box>
+    );
+  }
+
+  if (!user) {
+    // Renderiza mínimo mientras redirige
+    return (
+      <Box
+        sx={{ height: "100vh", display: "flex", justifyContent: "center", alignItems: "center" }}
+      >
+        <Typography variant="h6">Redirigiendo...</Typography>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ display: "flex" }}>
-      {/* AppBar superior */}
       <AppBar
         position="fixed"
         sx={{
@@ -61,7 +100,6 @@ export default function AdminLayout() {
         </Toolbar>
       </AppBar>
 
-      {/* Sidebar con logo y menú */}
       <Drawer
         variant="permanent"
         sx={{
@@ -76,8 +114,6 @@ export default function AdminLayout() {
         }}
       >
         <Toolbar />
-
-        {/* ✅ Logo centrado arriba del menú */}
         <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
           <img src={logo} alt="Logo" style={{ width: "120px" }} />
         </Box>
@@ -118,7 +154,6 @@ export default function AdminLayout() {
         </List>
       </Drawer>
 
-      {/* Contenido principal */}
       <Box component="main" sx={{ flexGrow: 1, p: 3, mt: 8 }}>
         <Outlet />
       </Box>

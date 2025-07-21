@@ -11,15 +11,16 @@ import Reportes from "./pages/Reportes";
 import HistorialEntregas from "./pages/HistorialEntregas";
 import Configuracion from "./pages/Configuracion.jsx";
 
-
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminLayout from "./components/AdminLayout";
 
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Login />} />
+      {/* Cambié path login de "/" a "/login" */}
+      <Route path="/login" element={<Login />} />
 
+      {/* Ruta protegida para el AdminLayout */}
       <Route
         path="/"
         element={
@@ -28,16 +29,20 @@ function App() {
           </ProtectedRoute>
         }
       >
+        <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="pedidos" element={<Pedidos />} />
         <Route path="repartidores" element={<Repartidores />} />
         <Route path="clientes" element={<Clientes />} />
-        <Route path="/inventario" element={<Inventario />} />
+        <Route path="inventario" element={<Inventario />} />
         <Route path="reportes" element={<Reportes />} />
         <Route path="historial" element={<HistorialEntregas />} />
         <Route path="configuracion" element={<Configuracion />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
+
+      {/* Redirigir cualquier ruta desconocida al login */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }
