@@ -7,7 +7,9 @@ import {
 import {
   ToggleOn, ToggleOff, History, Save
 } from "@mui/icons-material";
-import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import {
+  collection, query, where, onSnapshot, doc, updateDoc, getDocs
+} from "firebase/firestore";
 import { firestore } from "../firebase/firebaseConfig";
 import { useNavigate } from "react-router-dom";
 
@@ -15,8 +17,11 @@ export default function Repartidores() {
   const [repartidores, setRepartidores] = useState([]);
   const [filtro, setFiltro] = useState({ nombre: "", estado: "Todos" });
   const [zonasDisponibles, setZonasDisponibles] = useState([]);
+  const [cargaRepartidores, setCargaRepartidores] = useState({});
+  const [productosMap, setProductosMap] = useState({});
   const navigate = useNavigate();
 
+  // Cargar repartidores
   useEffect(() => {
     const q = query(collection(firestore, "usuario"), where("rol", "==", "repartidor"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -26,6 +31,7 @@ export default function Repartidores() {
     return () => unsubscribe();
   }, []);
 
+  // Cargar zonas
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(firestore, "zonas_reparto"), (snapshot) => {
       const zonas = snapshot.docs.map(doc => ({
@@ -36,6 +42,44 @@ export default function Repartidores() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Cargar productos (id -> nombre producto)
+  useEffect(() => {
+    const cargarProductos = async () => {
+      const productosSnap = await getDocs(collection(firestore, "producto"));
+      const mapa = {};
+      productosSnap.forEach(doc => {
+        const data = doc.data();
+        mapa[doc.id] = data.producto || "Sin nombre";
+      });
+      setProductosMap(mapa);
+    };
+    cargarProductos();
+  }, []);
+
+  // Cargar carga manual de repartidores desde la colección carga_repartidores
+  useEffect(() => {
+    const obtenerCargaManual = async () => {
+      const carga = {};
+      const cargaSnap = await getDocs(collection(firestore, "carga_repartidores"));
+      cargaSnap.forEach(doc => {
+        const data = doc.data();
+        const idRep = data.id_repartidor;
+        const idProd = data.id_producto;
+        const cantidad = data.cantidad || 0;
+
+        if (!idRep || !idProd) return;
+
+        if (!carga[idRep]) carga[idRep] = {};
+        if (!carga[idRep][idProd]) carga[idRep][idProd] = 0;
+
+        carga[idRep][idProd] += cantidad;
+      });
+      setCargaRepartidores(carga);
+    };
+
+    obtenerCargaManual();
+  }, [repartidores]);
 
   const toggleEstado = async (id, estadoActual) => {
     const nuevoEstado = estadoActual === "Activo" ? "Inactivo" : "Activo";
@@ -93,6 +137,7 @@ export default function Repartidores() {
               <TableCell>Nombre</TableCell>
               <TableCell>Teléfono</TableCell>
               <TableCell>Zona</TableCell>
+              <TableCell><strong>Carga Actual</strong></TableCell>
               <TableCell>Estado</TableCell>
               <TableCell>Acciones</TableCell>
             </TableRow>
@@ -125,6 +170,16 @@ export default function Repartidores() {
                       ))}
                     </Select>
                   </FormControl>
+                </TableCell>
+
+                <TableCell>
+                  {cargaRepartidores[rep.id]
+                    ? Object.entries(cargaRepartidores[rep.id]).map(([producto, cantidad]) => (
+                      <div key={producto}>
+                        {cantidad} × {productosMap[producto] || producto}
+                      </div>
+                    ))
+                    : "0 productos"}
                 </TableCell>
 
                 <TableCell>
@@ -167,7 +222,7 @@ export default function Repartidores() {
             ))}
             {repartidoresFiltrados.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={6} align="center">
                   No hay repartidores registrados
                 </TableCell>
               </TableRow>
