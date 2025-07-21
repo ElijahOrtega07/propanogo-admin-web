@@ -20,7 +20,8 @@ export default function Clientes() {
   const [formEdit, setFormEdit] = useState({
     nombre: "",
     direccion: "",
-    contacto: ""
+    contacto: "",
+    rol: "cliente"
   });
 
   const [filtro, setFiltro] = useState({
@@ -57,7 +58,8 @@ export default function Clientes() {
         direccion: data.direccion || "––",
         pedidosRealizados: pedidosPorUsuario[id] || 0,
         contacto: data.telefono || data.contacto || "––",
-        estado: data.estado || "Activo"
+        estado: data.estado || "Activo",
+        rol: data.rol || "cliente"
       };
     });
 
@@ -75,7 +77,8 @@ export default function Clientes() {
     setFormEdit({
       nombre: cliente.nombre,
       direccion: cliente.direccion,
-      contacto: cliente.contacto
+      contacto: cliente.contacto,
+      rol: cliente.rol || "cliente"
     });
   };
 
@@ -84,7 +87,8 @@ export default function Clientes() {
       await updateDoc(doc(firestore, "usuario", editando.id), {
         nombre: formEdit.nombre,
         direccion: formEdit.direccion,
-        telefono: formEdit.contacto
+        telefono: formEdit.contacto,
+        rol: formEdit.rol
       });
       cerrarModal();
       obtenerClientes();
@@ -93,7 +97,7 @@ export default function Clientes() {
 
   const cerrarModal = () => {
     setEditando(null);
-    setFormEdit({ nombre: "", direccion: "", contacto: "" });
+    setFormEdit({ nombre: "", direccion: "", contacto: "", rol: "cliente" });
   };
 
   const handleChange = (e) => {
@@ -235,6 +239,18 @@ export default function Clientes() {
             fullWidth
             sx={{ mt: 2 }}
           />
+          <TextField
+            select
+            label="Rol"
+            name="rol"
+            value={formEdit.rol}
+            onChange={handleChange}
+            fullWidth
+            sx={{ mt: 2 }}
+          >
+            <MenuItem value="cliente">Cliente</MenuItem>
+            <MenuItem value="repartidor">Repartidor</MenuItem>
+          </TextField>
         </DialogContent>
         <DialogActions>
           <Button onClick={cerrarModal}>Cancelar</Button>
