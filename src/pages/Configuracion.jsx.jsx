@@ -18,6 +18,9 @@ export default function Configuracion() {
 
   const [crearUsuarioAbierto, setCrearUsuarioAbierto] = useState(false);
   const [zonasReparto, setZonasReparto] = useState([]);
+  const [sectoresZona, setSectoresZona] = useState([]);
+  const [nuevoSector, setNuevoSector] = useState("");
+
   const [nuevoUsuario, setNuevoUsuario] = useState({
     nombre: "",
     correo: "",
@@ -93,6 +96,8 @@ export default function Configuracion() {
   const cerrarModal = () => {
     setModal(null);
     setFormData({ nuevaClave: "", nombrePlanta: "", direccionPlanta: "", zonaReparto: "" });
+    setSectoresZona([]);
+    setNuevoSector("");
   };
 
   const handleChange = (e) => {
@@ -109,11 +114,14 @@ export default function Configuracion() {
       try {
         await addDoc(collection(firestore, "zonas_reparto"), {
           nombre: formData.zonaReparto,
+          sectores: sectoresZona,
           activo: true,
           creada_en: new Date()
         });
         alert("Zona de reparto guardada correctamente.");
         await cargarZonas();
+        setSectoresZona([]);
+        setFormData({ ...formData, zonaReparto: "" });
       } catch (error) {
         console.error("Error al guardar la zona:", error);
         alert("Error al guardar la zona.");
@@ -137,7 +145,6 @@ export default function Configuracion() {
         alert("Error al guardar los datos.");
       }
     }
-
 
     cerrarModal();
   };
@@ -224,13 +231,54 @@ export default function Configuracion() {
                 onChange={handleChange}
                 sx={{ mt: 2, mb: 2 }}
               />
+              <TextField
+                label="Agregar sector"
+                value={nuevoSector}
+                fullWidth
+                onChange={(e) => setNuevoSector(e.target.value)}
+                sx={{ mb: 1 }}
+              />
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  if (nuevoSector.trim()) {
+                    setSectoresZona([...sectoresZona, nuevoSector.trim()]);
+                    setNuevoSector("");
+                  }
+                }}
+                sx={{ mb: 2 }}
+              >
+                + Agregar sector
+              </Button>
+
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>Sectores agregados:</Typography>
+              {sectoresZona.length === 0 ? (
+                <Typography color="text.secondary">Aún no hay sectores.</Typography>
+              ) : (
+                <ul>
+                  {sectoresZona.map((sector, index) => (
+                    <li key={index}>{sector}</li>
+                  ))}
+                </ul>
+              )}
+
+              <Divider sx={{ my: 2 }} />
               <Typography variant="subtitle1" sx={{ mb: 1 }}>Zonas registradas:</Typography>
               {zonasReparto.length === 0 ? (
                 <Typography color="text.secondary">No hay zonas registradas aún.</Typography>
               ) : (
                 <ul style={{ paddingLeft: "1.2em" }}>
                   {zonasReparto.map((zona) => (
-                    <li key={zona.id}>{zona.nombre}</li>
+                    <li key={zona.id}>
+                      <strong>{zona.nombre}</strong>
+                      {zona.sectores && zona.sectores.length > 0 && (
+                        <ul>
+                          {zona.sectores.map((s, i) => (
+                            <li key={i}>{s}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
                   ))}
                 </ul>
               )}
