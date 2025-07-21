@@ -9,11 +9,10 @@ import {
 } from "firebase/firestore";
 import { firestore } from "../firebase/firebaseConfig";
 
-
 export default function Pedidos() {
   const [pedidos, setPedidos] = useState([]);
   const [estadoFiltro, setEstadoFiltro] = useState("Pendiente");
-  const [usuarios, setUsuarios] = useState([]); // Para buscar nombre cliente y repartidores
+  const [usuarios, setUsuarios] = useState([]); // Clientes y repartidores
   const [repartidores, setRepartidores] = useState([]);
   const [asignaciones, setAsignaciones] = useState({}); // pedidoId -> repartidorId
 
@@ -30,10 +29,10 @@ export default function Pedidos() {
     return () => unsubscribe();
   }, []);
 
-  // Cargar usuarios (clientes y repartidores)
+  // Cargar usuarios y separar repartidores
   useEffect(() => {
     async function cargarUsuarios() {
-      const usuariosCol = collection(firestore, "usuario"); // colección correcta sin 's'
+      const usuariosCol = collection(firestore, "usuario");
       const snapshot = await getDocs(usuariosCol);
       const listaUsuarios = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setUsuarios(listaUsuarios);
@@ -42,27 +41,24 @@ export default function Pedidos() {
     cargarUsuarios();
   }, []);
 
+  // Eliminar pedido con confirmación
   const eliminarPedido = async (id) => {
     if (!window.confirm("¿Eliminar este pedido?")) return;
     await deleteDoc(doc(firestore, "pedidos", id));
   };
 
+  // Color según estado
   const colorEstado = (estado) => {
     switch (estado) {
-      case "Pendiente":
-        return "#fbc02d";
-      case "En camino":
-        return "#42a5f5";
-      case "Entregado":
-        return "#66bb6a";
-      case "Asignado":
-        return "#1976d2"; // azul oscuro para asignado
-      default:
-        return "#ccc";
+      case "Pendiente": return "#fbc02d";
+      case "En camino": return "#42a5f5";
+      case "Entregado": return "#66bb6a";
+      case "Asignado": return "#1976d2";
+      default: return "#ccc";
     }
   };
 
-  // Manejar cambio en asignación seleccionada
+  // Manejar cambio de repartidor asignado (en select)
   const handleAsignacionChange = (pedidoId, repartidorId) => {
     setAsignaciones(prev => ({ ...prev, [pedidoId]: repartidorId }));
   };
@@ -78,7 +74,7 @@ export default function Pedidos() {
       const pedidoRef = doc(firestore, "pedidos", pedidoId);
       await updateDoc(pedidoRef, {
         id_repartidor: repartidorId,
-        // No cambiamos el estado aquí
+        // No se cambia estado aquí, solo asignar repartidor
       });
       alert("Repartidor asignado correctamente");
       setAsignaciones(prev => ({ ...prev, [pedidoId]: "" }));
@@ -87,12 +83,13 @@ export default function Pedidos() {
     }
   };
 
-  // Obtener nombre cliente por id_usuario
+  // Obtener nombre del cliente para mostrar
   const nombreCliente = (id_usuario) => {
     const usuario = usuarios.find(u => u.id === id_usuario);
     return usuario?.nombre || usuario?.email || id_usuario || "Desconocido";
   };
 
+  // Filtrar pedidos según estado seleccionado
   const pedidosFiltrados = pedidos.filter(p => p.estado === estadoFiltro);
 
   return (
@@ -120,6 +117,7 @@ export default function Pedidos() {
             <TableRow>
               <TableCell>Cliente</TableCell>
               <TableCell>Dirección</TableCell>
+              <TableCell>sector</TableCell> 
               <TableCell>Zona</TableCell>
               <TableCell>Estado</TableCell>
               <TableCell>Fecha</TableCell>
@@ -134,6 +132,7 @@ export default function Pedidos() {
               <TableRow key={pedido.id}>
                 <TableCell>{nombreCliente(pedido.id_usuario)}</TableCell>
                 <TableCell>{pedido.direccion_entrega || "––"}</TableCell>
+                <TableCell>{pedido.notas || "––"}</TableCell> {/* Mostrar notas */}
                 <TableCell>{pedido.zonaReparto || "No asignada"}</TableCell>
                 <TableCell>
                   <span
@@ -155,15 +154,14 @@ export default function Pedidos() {
                     : "–"}
                 </TableCell>
                 <TableCell>
-  <IconButton
-    color="error"
-    onClick={() => eliminarPedido(pedido.id)}
-  >
-    <DeleteForeverRounded />
-  </IconButton>
-</TableCell>
+                  <IconButton
+                    color="error"
+                    onClick={() => eliminarPedido(pedido.id)}
+                  >
+                    <DeleteForeverRounded />
+                  </IconButton>
+                </TableCell>
                 <TableCell>
-                  {/* Mostrar solo para pedidos Pendiente */}
                   {pedido.estado === "Pendiente" && (
                     <>
                       <FormControl fullWidth size="small" sx={{ mb: 1 }}>
@@ -174,13 +172,13 @@ export default function Pedidos() {
                           onChange={(e) => handleAsignacionChange(pedido.id, e.target.value)}
                         >
                           <MenuItem value="">-- Ninguno --</MenuItem>
-                          {repartidores
-                            .filter(r => r.zona === pedido.zonaReparto) // ✅ solo repartidores con zona igual
-                            .map(r => (
+                          {
+                            repartidores.map(r => (
                               <MenuItem key={r.id} value={r.id}>
                                 {r.nombre || r.email || r.id}
                               </MenuItem>
-                          ))}
+                            ))
+                          }
                         </Select>
                       </FormControl>
                       <Button
@@ -197,7 +195,7 @@ export default function Pedidos() {
             ))}
             {pedidosFiltrados.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} align="center">
+                <TableCell colSpan={9} align="center">
                   No hay pedidos con estado "{estadoFiltro}"
                 </TableCell>
               </TableRow>
