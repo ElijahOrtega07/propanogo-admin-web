@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
 import {
   Box, Typography, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Paper, Tabs, Tab, Button, Select, MenuItem, FormControl, InputLabel, IconButton
+  TableHead, TableRow, Paper, Tabs, Tab, Button, Select, MenuItem, FormControl, InputLabel
 } from "@mui/material";
-import DeleteForeverRounded from "@mui/icons-material/DeleteForeverRounded";
 import {
-  collection, onSnapshot, doc, updateDoc, getDocs, deleteDoc
+  collection, onSnapshot, doc, updateDoc, getDocs
 } from "firebase/firestore";
 import { firestore } from "../firebase/firebaseConfig";
 
@@ -41,12 +40,6 @@ export default function Pedidos() {
     cargarUsuarios();
   }, []);
 
-  // Eliminar pedido con confirmación
-  const eliminarPedido = async (id) => {
-    if (!window.confirm("¿Eliminar este pedido?")) return;
-    await deleteDoc(doc(firestore, "pedidos", id));
-  };
-
   // Color según estado
   const colorEstado = (estado) => {
     switch (estado) {
@@ -74,7 +67,6 @@ export default function Pedidos() {
       const pedidoRef = doc(firestore, "pedidos", pedidoId);
       await updateDoc(pedidoRef, {
         id_repartidor: repartidorId,
-        // No se cambia estado aquí, solo asignar repartidor
       });
       alert("Repartidor asignado correctamente");
       setAsignaciones(prev => ({ ...prev, [pedidoId]: "" }));
@@ -117,12 +109,12 @@ export default function Pedidos() {
             <TableRow>
               <TableCell>Cliente</TableCell>
               <TableCell>Dirección</TableCell>
-              <TableCell>sector</TableCell> 
+              <TableCell>sector</TableCell>
               <TableCell>Zona</TableCell>
               <TableCell>Estado</TableCell>
               <TableCell>Fecha</TableCell>
-              <TableCell>Repartidor</TableCell> 
-              <TableCell>Acción</TableCell>
+              <TableCell>Repartidor</TableCell>
+              {/* <TableCell>Acción</TableCell> Eliminado */}
               <TableCell>Asignar Repartidor</TableCell>
             </TableRow>
           </TableHead>
@@ -132,7 +124,7 @@ export default function Pedidos() {
               <TableRow key={pedido.id}>
                 <TableCell>{nombreCliente(pedido.id_usuario)}</TableCell>
                 <TableCell>{pedido.direccion_entrega || "––"}</TableCell>
-                <TableCell>{pedido.notas || "––"}</TableCell> {/* Mostrar notas */}
+                <TableCell>{pedido.notas || "––"}</TableCell>
                 <TableCell>{pedido.zonaReparto || "No asignada"}</TableCell>
                 <TableCell>
                   <span
@@ -153,14 +145,9 @@ export default function Pedidos() {
                     ? repartidores.find(r => r.id === pedido.id_repartidor)?.nombre || "Desconocido"
                     : "–"}
                 </TableCell>
-                <TableCell>
-                  <IconButton
-                    color="error"
-                    onClick={() => eliminarPedido(pedido.id)}
-                  >
-                    <DeleteForeverRounded />
-                  </IconButton>
-                </TableCell>
+
+                {/* Acción eliminada */}
+
                 <TableCell>
                   {pedido.estado === "Pendiente" && (
                     <>
@@ -195,7 +182,7 @@ export default function Pedidos() {
             ))}
             {pedidosFiltrados.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} align="center">
+                <TableCell colSpan={8} align="center">
                   No hay pedidos con estado "{estadoFiltro}"
                 </TableCell>
               </TableRow>
