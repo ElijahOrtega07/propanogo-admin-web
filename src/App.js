@@ -11,6 +11,7 @@ import Reportes from "./pages/Reportes";
 import HistorialEntregas from "./pages/HistorialEntregas";
 import Configuracion from "./pages/Configuracion.jsx";
 
+
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminLayout from "./components/AdminLayout";
 
@@ -39,6 +40,7 @@ function App() {
         <Route path="historial" element={<HistorialEntregas />} />
         <Route path="configuracion" element={<Configuracion />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
+
       </Route>
 
       {/* Redirigir cualquier ruta desconocida al login */}

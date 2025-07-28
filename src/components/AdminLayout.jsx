@@ -150,6 +150,7 @@ export default function AdminLayout() {
           <ListItem button component={Link} to="/configuracion" sx={{ color: "white" }}>
             <ListItemIcon sx={{ color: "white" }}><SettingsIcon /></ListItemIcon>
             <ListItemText primary="Configuración" />
+            
           </ListItem>
         </List>
       </Drawer>
