@@ -15,7 +15,7 @@ import { Link, Outlet, useNavigate } from "react-router-dom";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase/firebaseConfig";
 
-import logo from "../assets/logo-transparente.png";
+import logo from "../assets/logo-transparente-white.png";
 
 const drawerWidth = 240;
 
@@ -92,7 +92,13 @@ export default function AdminLayout() {
             PropanoGO Admin
           </Typography>
           <Typography
-            sx={{ cursor: "pointer", fontWeight: "bold" }}
+            sx={{ cursor: "pointer", fontWeight: "bold", "&:hover": {
+              backgroundColor: "red",
+              color: "white",
+              borderRadius: "5px",
+              padding: "5px",
+              transition: "all 0.3s ease in-out",
+            } }}
             onClick={handleLogout}
           >
             Cerrar sesión
