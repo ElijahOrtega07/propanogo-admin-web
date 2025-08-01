@@ -2,13 +2,14 @@ import React, { useEffect, useState } from "react";
 import {
   Box, Typography, Table, TableHead, TableRow, TableCell,
   TableBody, TableContainer, Paper, TextField, FormControl,
-  InputLabel, Select, MenuItem, IconButton, Tooltip,
+  InputLabel, Select, MenuItem, IconButton, Tooltip, Button,
+  Dialog, DialogTitle, DialogContent, DialogActions
 } from "@mui/material";
 import {
-  ToggleOn, ToggleOff, History, Save
+  ToggleOn, ToggleOff, History, Save, Add
 } from "@mui/icons-material";
 import {
-  collection, query, where, onSnapshot, doc, updateDoc, getDocs
+  collection, query, where, onSnapshot, doc, updateDoc, getDocs, addDoc
 } from "firebase/firestore";
 import { firestore } from "../firebase/firebaseConfig";
 import { useNavigate } from "react-router-dom";
@@ -19,9 +20,17 @@ export default function Repartidores() {
   const [zonasDisponibles, setZonasDisponibles] = useState([]);
   const [cargaRepartidores, setCargaRepartidores] = useState({});
   const [productosMap, setProductosMap] = useState({});
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [nuevoRepartidor, setNuevoRepartidor] = useState({
+    nombre: "",
+    correo: "",
+    contraseña: "",
+    telefono: "",
+    direccion: ""
+  });
+
   const navigate = useNavigate();
 
-  // Cargar repartidores
   useEffect(() => {
     const q = query(collection(firestore, "usuario"), where("rol", "==", "repartidor"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -31,7 +40,6 @@ export default function Repartidores() {
     return () => unsubscribe();
   }, []);
 
-  // Cargar zonas
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(firestore, "zonas_reparto"), (snapshot) => {
       const zonas = snapshot.docs.map(doc => ({
@@ -43,7 +51,6 @@ export default function Repartidores() {
     return () => unsubscribe();
   }, []);
 
-  // Cargar productos (id -> nombre producto)
   useEffect(() => {
     const cargarProductos = async () => {
       const productosSnap = await getDocs(collection(firestore, "producto"));
@@ -57,7 +64,6 @@ export default function Repartidores() {
     cargarProductos();
   }, []);
 
-  // Cargar carga manual de repartidores desde la colección carga_repartidores
   useEffect(() => {
     const obtenerCargaManual = async () => {
       const carga = {};
@@ -94,6 +100,45 @@ export default function Repartidores() {
     navigate(`/historial?repartidor=${encodeURIComponent(nombre)}`);
   };
 
+  const abrirModal = () => {
+    setNuevoRepartidor({
+      nombre: "",
+      correo: "",
+      contraseña: "",
+      telefono: "",
+      direccion: ""
+    });
+    setModalAbierto(true);
+  };
+
+  const cerrarModal = () => {
+    setModalAbierto(false);
+  };
+
+  const guardarRepartidor = async () => {
+    const { nombre, correo, contraseña, telefono, direccion } = nuevoRepartidor;
+
+    if (!nombre.trim() || !correo.trim() || !contraseña.trim()) {
+      return alert("Nombre, correo y contraseña son obligatorios");
+    }
+
+    try {
+      await addDoc(collection(firestore, "usuario"), {
+        nombre,
+        correo,
+        contraseña,
+        telefono,
+        direccion,
+        estado: "Activo",
+        rol: "repartidor",
+        zona: ""
+      });
+      cerrarModal();
+    } catch (error) {
+      alert("Error al guardar repartidor: " + error.message);
+    }
+  };
+
   const repartidoresFiltrados = repartidores.filter(r =>
     r.nombre.toLowerCase().includes(filtro.nombre.toLowerCase()) &&
     (filtro.estado === "Todos" || r.estado === filtro.estado)
@@ -105,29 +150,39 @@ export default function Repartidores() {
         Gestión de Repartidores
       </Typography>
 
-      {/* Filtros */}
-      <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-        <TextField
-          label="Buscar por nombre"
-          name="nombre"
-          variant="outlined"
-          size="small"
-          value={filtro.nombre}
-          onChange={handleFiltro}
-        />
-        <FormControl size="small" sx={{ minWidth: 150 }}>
-          <InputLabel>Estado</InputLabel>
-          <Select
-            name="estado"
-            value={filtro.estado}
-            label="Estado"
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+        <Box sx={{ display: "flex", gap: 2 }}>
+          <TextField
+            label="Buscar por nombre"
+            name="nombre"
+            variant="outlined"
+            size="small"
+            value={filtro.nombre}
             onChange={handleFiltro}
-          >
-            <MenuItem value="Todos">Todos</MenuItem>
-            <MenuItem value="Activo">Activo</MenuItem>
-            <MenuItem value="Inactivo">Inactivo</MenuItem>
-          </Select>
-        </FormControl>
+          />
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>Estado</InputLabel>
+            <Select
+              name="estado"
+              value={filtro.estado}
+              label="Estado"
+              onChange={handleFiltro}
+            >
+              <MenuItem value="Todos">Todos</MenuItem>
+              <MenuItem value="Activo">Activo</MenuItem>
+              <MenuItem value="Inactivo">Inactivo</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          color="primary"
+          onClick={abrirModal}
+        >
+          Nuevo Repartidor
+        </Button>
       </Box>
 
       <TableContainer component={Paper}>
@@ -230,6 +285,49 @@ export default function Repartidores() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Modal para nuevo repartidor */}
+      <Dialog open={modalAbierto} onClose={cerrarModal}>
+        <DialogTitle>Nuevo Repartidor</DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1, width: 400 }}>
+          <TextField
+            label="Nombre completo"
+            value={nuevoRepartidor.nombre}
+            onChange={(e) => setNuevoRepartidor({ ...nuevoRepartidor, nombre: e.target.value })}
+            autoFocus
+          />
+          <TextField
+            label="Correo electrónico"
+            type="email"
+            value={nuevoRepartidor.correo}
+            onChange={(e) => setNuevoRepartidor({ ...nuevoRepartidor, correo: e.target.value })}
+          />
+          <TextField
+            label="Contraseña"
+            type="password"
+            value={nuevoRepartidor.contraseña}
+            onChange={(e) => setNuevoRepartidor({ ...nuevoRepartidor, contraseña: e.target.value })}
+          />
+          <TextField
+            label="Teléfono"
+            value={nuevoRepartidor.telefono}
+            onChange={(e) => setNuevoRepartidor({ ...nuevoRepartidor, telefono: e.target.value })}
+          />
+          <TextField
+            label="Dirección"
+            value={nuevoRepartidor.direccion}
+            onChange={(e) => setNuevoRepartidor({ ...nuevoRepartidor, direccion: e.target.value })}
+            multiline
+            rows={2}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cerrarModal}>Cancelar</Button>
+          <Button onClick={guardarRepartidor} variant="contained" color="primary">
+            Guardar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
