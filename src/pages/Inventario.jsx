@@ -243,7 +243,7 @@ export default function Inventario() {
           startIcon={<ShoppingCartIcon />}
           onClick={() => setOpenCompra(true)}
         >
-          Registrar compra
+          Registrar en Inventario
         </Button>
       </Box>
 

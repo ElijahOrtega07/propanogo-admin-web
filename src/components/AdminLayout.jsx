@@ -92,7 +92,13 @@ export default function AdminLayout() {
             PropanoGO Admin
           </Typography>
           <Typography
-            sx={{ cursor: "pointer", fontWeight: "bold" }}
+            sx={{ cursor: "pointer", fontWeight: "bold", "&:hover": {
+              backgroundColor: "red",
+              color: "white",
+              borderRadius: "5px",
+              padding: "5px",
+              transition: "all 0.3s ease in-out",
+            } }}
             onClick={handleLogout}
           >
             Cerrar sesión
