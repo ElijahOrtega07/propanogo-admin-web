@@ -345,7 +345,7 @@ export default function Inventario() {
 
       {/* Modal de compra */}
       <Dialog open={openCompra} onClose={() => setOpenCompra(false)}>
-        <DialogTitle>Registrar Compra</DialogTitle>
+        <DialogTitle>Agregar a Inventario</DialogTitle>
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <FormControl fullWidth>
             <InputLabel>Producto</InputLabel>
@@ -377,7 +377,7 @@ export default function Inventario() {
         <DialogActions>
           <Button onClick={() => setOpenCompra(false)}>Cancelar</Button>
           <Button variant="contained" color="secondary" onClick={registrarCompra}>
-            Guardar compra
+            Guardar
           </Button>
         </DialogActions>
       </Dialog>

@@ -15,7 +15,7 @@ import { Link, Outlet, useNavigate } from "react-router-dom";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase/firebaseConfig";
 
-import logo from "../assets/logo-transparente.png";
+import logo from "../assets/logo-transparente-white.png";
 
 const drawerWidth = 240;
 
