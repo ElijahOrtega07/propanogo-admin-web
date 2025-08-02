@@ -149,6 +149,42 @@ export default function Configuracion() {
     cerrarModal();
   };
 
+  // === FUNCION BACKUP COMPLETO ===
+  const hacerBackupCompleto = async () => {
+    try {
+      const colecciones = [
+        "usuario",
+        "zonas_reparto",
+        "empresa",
+        "producto",
+        "carga_repartidores",
+        // Aquí puedes agregar más colecciones que quieras respaldar
+      ];
+
+      const backupData = {};
+
+      for (const nombreCol of colecciones) {
+        const snapshot = await getDocs(collection(firestore, nombreCol));
+        backupData[nombreCol] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      }
+
+      const dataStr = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+
+      const fecha = new Date().toISOString().slice(0, 10);
+      link.download = `backup_completo_sistema_${fecha}.json`;
+      link.click();
+
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      alert("Error al hacer backup completo: " + error.message);
+    }
+  };
+
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
@@ -169,6 +205,21 @@ export default function Configuracion() {
             <Button fullWidth variant="outlined" onClick={() => abrirModal("zonas")}>
               Establecer zonas de reparto
             </Button>
+
+            {/* Botón Backup Completo */}
+            <Paper elevation={2} sx={{ p: 2, mt: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Respaldo
+              </Typography>
+              <Button
+                fullWidth
+                variant="outlined"
+                color="error"
+                onClick={hacerBackupCompleto}
+              >
+                Backup Completo del Sistema
+              </Button>
+            </Paper>
           </Paper>
         </Grid>
 
@@ -183,6 +234,7 @@ export default function Configuracion() {
         </Grid>
       </Grid>
 
+      {/* Modales */}
       <Dialog open={!!modal} onClose={cerrarModal}>
         <DialogTitle>
           {modal === "password" && "Cambiar Contraseña"}
@@ -291,6 +343,7 @@ export default function Configuracion() {
         </DialogActions>
       </Dialog>
 
+      {/* Modal Crear Usuario */}
       <Dialog open={crearUsuarioAbierto} onClose={cerrarCrearUsuario}>
         <DialogTitle>Crear Nuevo Usuario</DialogTitle>
         <DialogContent>
