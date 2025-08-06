@@ -15,7 +15,6 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Block";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
-import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 
 export default function Inventario() {
   const [productos, setProductos] = useState([]);
@@ -34,20 +33,8 @@ export default function Inventario() {
     tipo: "producto",
   });
 
-  // Estado para modal de compras
-  const [openCompra, setOpenCompra] = useState(false);
-  const [compraDatos, setCompraDatos] = useState({
-    idProducto: "",
-    cantidad: 0,
-    costo: 0
-  });
-
-  // Estado para historial de compras
-  const [compras, setCompras] = useState([]);
-
   useEffect(() => {
     obtenerInventario();
-    obtenerCompras();
   }, []);
 
   const obtenerInventario = async () => {
@@ -57,16 +44,6 @@ export default function Inventario() {
       setProductos(lista);
     } catch (error) {
       console.error("Error al obtener inventario:", error);
-    }
-  };
-
-  const obtenerCompras = async () => {
-    try {
-      const snapshot = await getDocs(collection(firestore, "compras"));
-      const listaCompras = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setCompras(listaCompras);
-    } catch (error) {
-      console.error("Error al obtener compras:", error);
     }
   };
 
@@ -185,48 +162,6 @@ export default function Inventario() {
     }
   };
 
-  const registrarCompra = async () => {
-    try {
-      const { idProducto, cantidad, costo } = compraDatos;
-      if (!idProducto || cantidad <= 0 || costo <= 0) {
-        alert("Completa todos los campos de la compra.");
-        return;
-      }
-
-      const productoRef = doc(firestore, "producto", idProducto);
-      const producto = productos.find(p => p.id === idProducto);
-      const nuevaCantidad = (producto.cantidad || 0) + cantidad;
-      let estado = "Disponible";
-      if (nuevaCantidad === 0) estado = "Agotado";
-      else if (nuevaCantidad < 10) estado = "Bajo inventario";
-
-      const ultimaEntrada = new Date().toLocaleDateString("es-DO");
-
-      await updateDoc(productoRef, {
-        cantidad: nuevaCantidad,
-        ultimaEntrada,
-        estado,
-        activo: true
-      });
-
-      // Guardar historial en colección compras
-      await addDoc(collection(firestore, "compras"), {
-        id_producto: idProducto,
-        producto: producto.producto,
-        cantidad,
-        costo,
-        fecha: ultimaEntrada
-      });
-
-      setOpenCompra(false);
-      setCompraDatos({ idProducto: "", cantidad: 0, costo: 0 });
-      obtenerInventario();
-      obtenerCompras();
-    } catch (error) {
-      console.error("Error al registrar compra:", error);
-    }
-  };
-
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
@@ -236,14 +171,6 @@ export default function Inventario() {
       <Box mb={2} sx={{ display: "flex", gap: 2 }}>
         <Button variant="contained" color="primary" onClick={() => setOpenModal(true)}>
           Agregar nuevo producto
-        </Button>
-        <Button
-          variant="contained"
-          color="secondary"
-          startIcon={<ShoppingCartIcon />}
-          onClick={() => setOpenCompra(true)}
-        >
-          Registrar en Inventario
         </Button>
       </Box>
 
@@ -343,45 +270,6 @@ export default function Inventario() {
         </DialogActions>
       </Dialog>
 
-      {/* Modal de compra */}
-      <Dialog open={openCompra} onClose={() => setOpenCompra(false)}>
-        <DialogTitle>Agregar a Inventario</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <FormControl fullWidth>
-            <InputLabel>Producto</InputLabel>
-            <Select
-              value={compraDatos.idProducto}
-              label="Producto"
-              onChange={(e) => setCompraDatos({ ...compraDatos, idProducto: e.target.value })}
-            >
-              {productos.map((prod) => (
-                <MenuItem key={prod.id} value={prod.id}>
-                  {prod.producto}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <TextField
-            label="Cantidad"
-            type="number"
-            value={compraDatos.cantidad}
-            onChange={(e) => setCompraDatos({ ...compraDatos, cantidad: Number(e.target.value) })}
-          />
-          <TextField
-            label="Costo total"
-            type="number"
-            value={compraDatos.costo}
-            onChange={(e) => setCompraDatos({ ...compraDatos, costo: Number(e.target.value) })}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenCompra(false)}>Cancelar</Button>
-          <Button variant="contained" color="secondary" onClick={registrarCompra}>
-            Guardar
-          </Button>
-        </DialogActions>
-      </Dialog>
-
       {/* Filtro */}
       <Box mb={2}>
         <FormControl sx={{ minWidth: 200 }}>
@@ -474,45 +362,6 @@ export default function Inventario() {
         </Table>
       </TableContainer>
 
-      {/* Tabla de Historial de Compras */}
-      <Box mt={4}>
-        <Typography variant="h5" gutterBottom>
-          Historial de Compras
-        </Typography>
-        <Button variant="outlined" onClick={obtenerCompras} sx={{ mb: 2 }}>
-          Actualizar historial de compras
-        </Button>
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead sx={{ backgroundColor: "#f0f0f0" }}>
-              <TableRow>
-                <TableCell>Producto</TableCell>
-                <TableCell>Cantidad</TableCell>
-                <TableCell>Costo</TableCell>
-                <TableCell>Fecha</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {compras.length > 0 ? (
-                compras.map((compra) => (
-                  <TableRow key={compra.id}>
-                    <TableCell>{compra.producto}</TableCell>
-                    <TableCell>{compra.cantidad}</TableCell>
-                    <TableCell>${compra.costo}</TableCell>
-                    <TableCell>{compra.fecha}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} align="center">
-                    No hay compras registradas.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Box>
     </Box>
   );
 }
