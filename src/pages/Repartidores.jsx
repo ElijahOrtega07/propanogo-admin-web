@@ -6,7 +6,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions
 } from "@mui/material";
 import {
-  ToggleOn, ToggleOff, History, Save, Add
+  ToggleOn, ToggleOff, History, Add
 } from "@mui/icons-material";
 import {
   collection, query, where, onSnapshot, doc, updateDoc, getDocs, addDoc
@@ -17,7 +17,6 @@ import { useNavigate } from "react-router-dom";
 export default function Repartidores() {
   const [repartidores, setRepartidores] = useState([]);
   const [filtro, setFiltro] = useState({ nombre: "", estado: "Todos" });
-  const [zonasDisponibles, setZonasDisponibles] = useState([]);
   const [cargaRepartidores, setCargaRepartidores] = useState({});
   const [productosMap, setProductosMap] = useState({});
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -36,17 +35,6 @@ export default function Repartidores() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const lista = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setRepartidores(lista);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    const unsubscribe = onSnapshot(collection(firestore, "zonas_reparto"), (snapshot) => {
-      const zonas = snapshot.docs.map(doc => ({
-        id: doc.id,
-        nombre: doc.data().nombre || "Sin nombre"
-      }));
-      setZonasDisponibles(zonas);
     });
     return () => unsubscribe();
   }, []);
@@ -130,8 +118,7 @@ export default function Repartidores() {
         telefono,
         direccion,
         estado: "Activo",
-        rol: "repartidor",
-        zona: ""
+        rol: "repartidor"
       });
       cerrarModal();
     } catch (error) {
@@ -191,7 +178,6 @@ export default function Repartidores() {
             <TableRow>
               <TableCell>Nombre</TableCell>
               <TableCell>Teléfono</TableCell>
-              <TableCell>Zona</TableCell>
               <TableCell><strong>Carga Actual</strong></TableCell>
               <TableCell>Estado</TableCell>
               <TableCell>Acciones</TableCell>
@@ -202,30 +188,6 @@ export default function Repartidores() {
               <TableRow key={rep.id}>
                 <TableCell>{rep.nombre}</TableCell>
                 <TableCell>{rep.telefono || "––"}</TableCell>
-
-                <TableCell>
-                  <FormControl fullWidth size="small">
-                    <Select
-                      value={rep.zona || ""}
-                      onChange={(e) => {
-                        const nuevaZona = e.target.value;
-                        setRepartidores(prev =>
-                          prev.map(r =>
-                            r.id === rep.id ? { ...r, zona: nuevaZona } : r
-                          )
-                        );
-                      }}
-                      displayEmpty
-                    >
-                      <MenuItem value="">-- Sin zona --</MenuItem>
-                      {zonasDisponibles.map((zona) => (
-                        <MenuItem key={zona.id} value={zona.nombre}>
-                          {zona.nombre}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </TableCell>
 
                 <TableCell>
                   {cargaRepartidores[rep.id]
@@ -255,29 +217,12 @@ export default function Repartidores() {
                       <History />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title="Guardar zona">
-                    <IconButton
-                      onClick={async () => {
-                        try {
-                          const repartidorRef = doc(firestore, "usuario", rep.id);
-                          await updateDoc(repartidorRef, { zona: rep.zona || "" });
-                          alert("Zona actualizada correctamente");
-                        } catch (error) {
-                          alert("Error al actualizar zona: " + error.message);
-                        }
-                      }}
-                      size="small"
-                      color="secondary"
-                    >
-                      <Save />
-                    </IconButton>
-                  </Tooltip>
                 </TableCell>
               </TableRow>
             ))}
             {repartidoresFiltrados.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={5} align="center">
                   No hay repartidores registrados
                 </TableCell>
               </TableRow>

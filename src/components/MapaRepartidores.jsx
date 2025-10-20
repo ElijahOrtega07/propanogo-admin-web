@@ -23,7 +23,6 @@ export default function MapaRepartidores() {
   const [usuarios, setUsuarios] = useState([]);
   const [selected, setSelected] = useState(null);
 
-  // Cargar usuarios para obtener nombres
   useEffect(() => {
     async function cargarUsuarios() {
       const snapshot = await getDocs(collection(firestore, "usuario"));
@@ -33,7 +32,6 @@ export default function MapaRepartidores() {
     cargarUsuarios();
   }, []);
 
-  // Repartidores
   useEffect(() => {
     const unsub = onSnapshot(collection(firestore, "ubicaciones_repartidores"), snapshot => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -42,27 +40,18 @@ export default function MapaRepartidores() {
     return () => unsub();
   }, []);
 
-  // Pedidos pendientes
   useEffect(() => {
     const unsub = onSnapshot(collection(firestore, "pedidos"), snapshot => {
       const data = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(p => p.estado === "Pendiente" && (!p.id_repartidor || p.id_repartidor === ""));
       setPedidosPendientes(data);
-
-      // Debug: verificar si hay pedidos sin ubicación
-      data.forEach(p => {
-        if (!p.ubicacion_cliente?.latitude || !p.ubicacion_cliente?.longitude) {
-          console.warn("Pedido pendiente sin ubicación:", p.id, p.direccion_entrega);
-        }
-      });
     });
     return () => unsub();
   }, []);
 
   if (!isLoaded) return <p style={{ textAlign: "center", marginTop: "2rem" }}>Cargando mapa...</p>;
 
-  // Obtener nombre del cliente
   const nombreCliente = (id_usuario) => {
     const u = usuarios.find(user => user.id === id_usuario);
     return u?.nombre || "Cliente desconocido";
@@ -70,7 +59,6 @@ export default function MapaRepartidores() {
 
   return (
     <GoogleMap mapContainerStyle={containerStyle} center={center} zoom={13}>
-      {/* Marcadores de repartidores */}
       {repartidores.map(rep => {
         const ubicacion = rep.ubicacion_repartidor;
         if (!ubicacion?.latitude || !ubicacion?.longitude) return null;
@@ -81,14 +69,13 @@ export default function MapaRepartidores() {
             position={{ lat: ubicacion.latitude, lng: ubicacion.longitude }}
             onClick={() => setSelected({ tipo: "repartidor", data: rep })}
             icon={{
-              url: "https://cdn-icons-png.flaticon.com/512/854/854878.png",
-              scaledSize: new window.google.maps.Size(45, 45),
+              url: "https://png.pngtree.com/png-clipart/20190516/original/pngtree-vector-truck-icon-png-image_3782904.jpg",
+              scaledSize: new window.google.maps.Size(50, 50),
             }}
           />
         );
       })}
 
-      {/* Marcadores de pedidos pendientes */}
       {pedidosPendientes.map(p => {
         const ubicacion = p.ubicacion_cliente;
         if (!ubicacion?.latitude || !ubicacion?.longitude) return null;
@@ -99,14 +86,13 @@ export default function MapaRepartidores() {
             position={{ lat: ubicacion.latitude, lng: ubicacion.longitude }}
             onClick={() => setSelected({ tipo: "pedido", data: p })}
             icon={{
-              url: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
+              url: "https://cdn-icons-png.flaticon.com/512/684/684908.png", // marcador pedido
               scaledSize: new window.google.maps.Size(40, 40),
             }}
           />
         );
       })}
 
-      {/* InfoWindow */}
       {selected && (
         <InfoWindow
           position={

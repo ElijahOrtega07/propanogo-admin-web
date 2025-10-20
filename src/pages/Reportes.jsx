@@ -18,11 +18,9 @@ export default function Reportes() {
 
   useEffect(() => {
     const fetchData = async () => {
-      // Obtener pedidos
       const pedidosSnapshot = await getDocs(collection(firestore, "pedidos"));
       const pedidos = pedidosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      // Obtener usuarios (repartidores)
       const usuariosSnapshot = await getDocs(collection(firestore, "usuario"));
       const usuarios = usuariosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const mapaRepartidores = {};
@@ -32,7 +30,6 @@ export default function Reportes() {
         }
       });
 
-      // Obtener detalle_pedido y productos
       const detalleSnapshot = await getDocs(collection(firestore, "detalle_pedido"));
       const detalles = detalleSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
@@ -43,10 +40,10 @@ export default function Reportes() {
         mapaProductos[p.id] = p.producto;
       });
 
-      // Ventas por periodo usando fecha_entrega o fecha_pedido
+      // Ventas por periodo
       const ventasPorPeriodo = {};
       pedidos.forEach(p => {
-        if (p.estado !== "Entregado") return; // solo entregados
+        if (p.estado !== "Entregado") return;
 
         let fechaBase = null;
         if (p.fecha_entrega && typeof p.fecha_entrega.toDate === "function") {
@@ -75,7 +72,7 @@ export default function Reportes() {
       const ventas = Object.entries(ventasPorPeriodo).map(([nombre, ventas]) => ({ nombre, ventas }));
       setVentasData(ventas);
 
-      // Entregas por repartidor con nombre real
+      // Entregas por repartidor
       const entregasPorRepartidor = {};
       pedidos.forEach(p => {
         if (p.estado === "Entregado" && p.id_repartidor) {
@@ -86,7 +83,7 @@ export default function Reportes() {
       const repartidores = Object.entries(entregasPorRepartidor).map(([nombre, entregas]) => ({ nombre, entregas }));
       setRepartidoresData(repartidores);
 
-      // Productos más vendidos usando cantidad desde detalle_pedido
+      // Productos más vendidos
       const productosContador = {};
       detalles.forEach(d => {
         const nombre = mapaProductos[d.id_producto] || "Desconocido";
@@ -101,7 +98,6 @@ export default function Reportes() {
 
   const exportarExcel = () => {
     const wb = XLSX.utils.book_new();
-
     const sheet1 = XLSX.utils.json_to_sheet(ventasData);
     const sheet2 = XLSX.utils.json_to_sheet(repartidoresData);
     const sheet3 = XLSX.utils.json_to_sheet(productosData);
@@ -159,10 +155,22 @@ export default function Reportes() {
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h6">Productos más Vendidos</Typography>
         <BarChart width={600} height={250} data={productosData} layout="vertical">
-          <CartesianGrid strokeDasharray="3 3 " />
+          <CartesianGrid strokeDasharray="3 3" />
           <XAxis type="number" />
-          <YAxis dataKey="nombre" type="category" />
-          <Tooltip />
+          <YAxis
+            dataKey="nombre"
+            type="category"
+            width={180} // ancho suficiente
+            tick={({ x, y, payload }) => {
+              const text = payload.value.length > 25 ? payload.value.slice(0, 25) + "..." : payload.value;
+              return (
+                <text x={x - 10} y={y + 5} textAnchor="end" fontSize={12}>
+                  {text}
+                </text>
+              );
+            }}
+          />
+          <Tooltip formatter={(value, name, props) => [value, props.payload.nombre]} />
           <Bar dataKey="ventas" fill="#8884d8" />
         </BarChart>
       </Paper>
