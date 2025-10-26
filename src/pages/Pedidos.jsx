@@ -48,7 +48,7 @@ export default function Pedidos() {
       case "En camino": return "#42a5f5";
       case "Entregado": return "#66bb6a";
       case "Asignado": return "#1976d2";
-      case "Cancelado": return "#9e9e9e"; //  Color para cancelados
+      case "Cancelado": return "#9e9e9e";
       default: return "#ccc";
     }
   };
@@ -78,7 +78,6 @@ export default function Pedidos() {
     return usuario?.nombre || usuario?.email || id_usuario || "Desconocido";
   };
 
-  //  Filtro actualizado para incluir "Cancelado"
   const pedidosFiltrados = pedidos.filter(
     p => p.estado === estadoFiltro || (estadoFiltro === "Cancelados" && p.estado === "Cancelado")
   );
@@ -87,7 +86,6 @@ export default function Pedidos() {
     <Box>
       <Typography variant="h4" gutterBottom>Gestión de Pedidos</Typography>
 
-      {/*  BOTÓN PARA ABRIR EL MAPA GENERAL */}
       <Button
         variant="contained"
         color="primary"
@@ -110,7 +108,6 @@ export default function Pedidos() {
         </Box>
       </Modal>
 
-      {/*  Tabs incluyendo "Cancelados" */}
       <Tabs
         value={estadoFiltro}
         onChange={(e, newValue) => setEstadoFiltro(newValue)}
@@ -130,7 +127,6 @@ export default function Pedidos() {
               <TableCell>Cliente</TableCell>
               <TableCell>Dirección</TableCell>
               <TableCell>Sector</TableCell>
-              <TableCell>Zona</TableCell>
               <TableCell>Estado</TableCell>
               <TableCell>Fecha</TableCell>
               <TableCell>Repartidor</TableCell>
@@ -144,7 +140,6 @@ export default function Pedidos() {
                 <TableCell>{nombreCliente(pedido.id_usuario)}</TableCell>
                 <TableCell>{pedido.direccion_entrega || "––"}</TableCell>
                 <TableCell>{pedido.notas || "––"}</TableCell>
-                <TableCell>{pedido.zonaReparto || "No asignada"}</TableCell>
                 <TableCell>
                   <span style={{
                     backgroundColor: colorEstado(pedido.estado),
@@ -204,7 +199,7 @@ export default function Pedidos() {
             ))}
             {pedidosFiltrados.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} align="center">
+                <TableCell colSpan={7} align="center">
                   No hay pedidos con estado "{estadoFiltro}"
                 </TableCell>
               </TableRow>

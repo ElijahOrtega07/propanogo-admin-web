@@ -2,6 +2,17 @@ import React, { useEffect, useState } from "react";
 import { auth, firestore } from "../firebase/firebaseConfig";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
+import {
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Card,
+  CardContent,
+  Grid,
+  Alert,
+} from "@mui/material";
+import { Save, Edit, Cancel } from "@mui/icons-material";
 
 const Perfil = () => {
   const [user] = useAuthState(auth);
@@ -19,8 +30,6 @@ const Perfil = () => {
 
           if (docSnap.exists()) {
             setUserData(docSnap.data());
-          } else {
-            console.log("No se encontró el documento del usuario.");
           }
         } catch (error) {
           console.error("Error al obtener datos del usuario:", error);
@@ -59,115 +68,116 @@ const Perfil = () => {
   };
 
   if (!userData) {
-    return <p>Cargando datos del usuario...</p>;
+    return (
+      <Box sx={{ mt: 10, textAlign: "center" }}>
+        <Typography variant="h6" color="text.secondary">
+          Cargando datos del usuario...
+        </Typography>
+      </Box>
+    );
   }
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-semibold mb-4">Perfil del Administrador</h2>
+    <Box sx={{ p: 3, display: "flex", justifyContent: "center" }}>
+      <Card sx={{ maxWidth: 600, width: "100%", borderRadius: 3, boxShadow: 5 }}>
+        <CardContent>
+          <Typography variant="h4" sx={{ mb: 3, color: "#1976d2", fontWeight: "bold", textAlign: "center" }}>
+            Perfil del Administrador
+          </Typography>
 
-      <div className="bg-white rounded-xl shadow-md p-4 max-w-md">
-        <div className="mb-3">
-          <label className="font-semibold block mb-1">Nombre:</label>
-          <input
-            type="text"
-            name="nombre"
-            value={userData.nombre || ""}
-            onChange={handleChange}
-            disabled={!editMode}
-            className={`w-full p-2 border rounded ${
-              editMode ? "border-blue-500" : "bg-gray-100"
-            }`}
-          />
-        </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <TextField
+                label="Nombre"
+                name="nombre"
+                value={userData.nombre || ""}
+                onChange={handleChange}
+                fullWidth
+                disabled={!editMode}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Correo"
+                value={userData.correo || ""}
+                fullWidth
+                disabled
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Teléfono"
+                name="telefono"
+                value={userData.telefono || ""}
+                onChange={handleChange}
+                fullWidth
+                disabled={!editMode}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Dirección"
+                name="direccion"
+                value={userData.direccion || ""}
+                onChange={handleChange}
+                fullWidth
+                disabled={!editMode}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Rol"
+                value={userData.rol || ""}
+                fullWidth
+                disabled
+              />
+            </Grid>
+          </Grid>
 
-        <div className="mb-3">
-          <label className="font-semibold block mb-1">Correo:</label>
-          <input
-            type="email"
-            value={userData.correo || ""}
-            disabled
-            className="w-full p-2 border rounded bg-gray-100"
-          />
-        </div>
+          <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end", gap: 2 }}>
+            {!editMode ? (
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<Edit />}
+                onClick={() => setEditMode(true)}
+              >
+                Editar
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="contained"
+                  color="success"
+                  startIcon={<Save />}
+                  onClick={handleGuardar}
+                  disabled={loading}
+                >
+                  {loading ? "Guardando..." : "Guardar"}
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<Cancel />}
+                  onClick={() => setEditMode(false)}
+                >
+                  Cancelar
+                </Button>
+              </>
+            )}
+          </Box>
 
-        <div className="mb-3">
-          <label className="font-semibold block mb-1">Teléfono:</label>
-          <input
-            type="text"
-            name="telefono"
-            value={userData.telefono || ""}
-            onChange={handleChange}
-            disabled={!editMode}
-            className={`w-full p-2 border rounded ${
-              editMode ? "border-blue-500" : "bg-gray-100"
-            }`}
-          />
-        </div>
-
-        <div className="mb-3">
-          <label className="font-semibold block mb-1">Dirección:</label>
-          <input
-            type="text"
-            name="direccion"
-            value={userData.direccion || ""}
-            onChange={handleChange}
-            disabled={!editMode}
-            className={`w-full p-2 border rounded ${
-              editMode ? "border-blue-500" : "bg-gray-100"
-            }`}
-          />
-        </div>
-
-        <div className="mb-3">
-          <label className="font-semibold block mb-1">Rol:</label>
-          <input
-            type="text"
-            value={userData.rol || ""}
-            disabled
-            className="w-full p-2 border rounded bg-gray-100"
-          />
-        </div>
-
-        {/* Botones */}
-        <div className="flex gap-3 mt-4">
-          {!editMode ? (
-            <button
-              onClick={() => setEditMode(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          {mensaje && (
+            <Alert
+              severity={mensaje.includes("✅") ? "success" : "error"}
+              sx={{ mt: 3 }}
             >
-              Editar
-            </button>
-          ) : (
-            <>
-              <button
-                onClick={handleGuardar}
-                disabled={loading}
-                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-              >
-                {loading ? "Guardando..." : "Guardar cambios"}
-              </button>
-              <button
-                onClick={() => setEditMode(false)}
-                className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
-              >
-                Cancelar
-              </button>
-            </>
+              {mensaje}
+            </Alert>
           )}
-        </div>
-
-        {mensaje && (
-          <p
-            className={`mt-3 font-semibold ${
-              mensaje.includes("✅") ? "text-green-600" : "text-red-600"
-            }`}
-          >
-            {mensaje}
-          </p>
-        )}
-      </div>
-    </div>
+        </CardContent>
+      </Card>
+    </Box>
   );
 };
 
